@@ -17,7 +17,8 @@ request.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('token')
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      // token 已经包含 "Bearer " 前缀，直接使用
+      config.headers.Authorization = token
     }
     return config
   },

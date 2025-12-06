@@ -20,9 +20,11 @@ export const useUserStore = defineStore('user', () => {
   // 登录
   const login = async (loginData: LoginRequest) => {
     const res = await loginApi(loginData)
-    token.value = res.data.token
+    // 组合 tokenType 和 token，存储完整的 Bearer token
+    const fullToken = `${res.data.tokenType} ${res.data.token}`
+    token.value = fullToken
     user.value = res.data.user
-    localStorage.setItem('token', res.data.token)
+    localStorage.setItem('token', fullToken)
     localStorage.setItem('user', JSON.stringify(res.data.user))
     return res
   }
