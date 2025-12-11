@@ -55,42 +55,13 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="industry" label="行业" width="150">
-            <template #default="{ row }">
-              {{ getIndustryLabel(row.industry) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="region" label="区域" width="100">
-            <template #default="{ row }">
-              {{ getRegionLabel(row.region) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="orientedUser" label="面向用户" width="140">
-            <template #default="{ row }">
-              {{ getOrientedUserLabel(row.orientedUser) }}
-            </template>
-          </el-table-column>
           <el-table-column prop="startDate" label="开始日期" width="120" />
           <el-table-column prop="plannedCompletionDate" label="计划完成日期" width="130" />
-          <el-table-column prop="createdAt" label="创建时间" width="180">
-            <template #default="{ row }">
-              {{ formatDate(row.createdAt) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="200" fixed="right">
+          <el-table-column label="操作" width="280" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link @click="viewMembers(row)">查看成员</el-button>
-              <el-dropdown trigger="click" @command="(cmd: string) => handleMoreAction(cmd, row)">
-                <el-button type="primary" link>
-                  更多操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="detail">查看项目详情</el-dropdown-item>
-                    <el-dropdown-item command="upload">上传文件评估</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
+              <el-button type="primary" link @click="viewDetail(row)">查看详情</el-button>
+              <el-button type="primary" link @click="openUploadDrawer(row)">上传文件</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -754,16 +725,18 @@ const handleCommand = (command: string) => {
   }
 }
 
-// 处理更多操作
-const handleMoreAction = (command: string, project: Project) => {
+// 查看项目详情
+const viewDetail = (project: Project) => {
   currentProject.value = project
-  if (command === 'detail') {
-    detailDialogVisible.value = true
-  } else if (command === 'upload') {
-    // 打开上传抽屉前清空状态
-    resetUploadState()
-    uploadDrawerVisible.value = true
-  }
+  detailDialogVisible.value = true
+}
+
+// 打开上传文件抽屉
+const openUploadDrawer = (project: Project) => {
+  currentProject.value = project
+  // 打开上传抽屉前清空状态
+  resetUploadState()
+  uploadDrawerVisible.value = true
 }
 
 // ============ 文件上传相关方法 ============
