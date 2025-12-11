@@ -44,7 +44,7 @@ router.beforeEach((to, _from, next) => {
   // 设置页面标题
   document.title = `${to.meta.title || '风险预警平台'} - 风险合规预警系统`
 
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
 
   if (to.meta.requiresAuth && !token) {
     // 需要登录但未登录，跳转到登录页

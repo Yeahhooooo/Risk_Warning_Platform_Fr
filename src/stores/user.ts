@@ -7,11 +7,11 @@ import router from '@/router'
 
 export const useUserStore = defineStore('user', () => {
   const user = ref<UserResponse | null>(null)
-  const token = ref<string | null>(localStorage.getItem('token'))
+  const token = ref<string | null>(sessionStorage.getItem('token'))
 
   // 初始化用户信息
   const initUser = () => {
-    const userStr = localStorage.getItem('user')
+    const userStr = sessionStorage.getItem('user')
     if (userStr) {
       user.value = JSON.parse(userStr)
     }
@@ -24,8 +24,8 @@ export const useUserStore = defineStore('user', () => {
     const fullToken = `${res.data.tokenType} ${res.data.token}`
     token.value = fullToken
     user.value = res.data.user
-    localStorage.setItem('token', fullToken)
-    localStorage.setItem('user', JSON.stringify(res.data.user))
+    sessionStorage.setItem('token', fullToken)
+    sessionStorage.setItem('user', JSON.stringify(res.data.user))
     return res
   }
 
@@ -35,11 +35,11 @@ export const useUserStore = defineStore('user', () => {
     return res
   }
 
-  // 获取用户信息
+// 获取用户信息
   const fetchUser = async () => {
     const res = await getCurrentUser()
     user.value = res.data
-    localStorage.setItem('user', JSON.stringify(res.data))
+    sessionStorage.setItem('user', JSON.stringify(res.data))
     return res
   }
 
@@ -47,8 +47,8 @@ export const useUserStore = defineStore('user', () => {
   const logout = () => {
     token.value = null
     user.value = null
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
     router.push('/login')
   }
 

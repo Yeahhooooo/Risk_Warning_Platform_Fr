@@ -15,7 +15,7 @@ const request = axios.create({
 // 请求拦截器
 request.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('token')
     if (token) {
       // token 已经包含 "Bearer " 前缀，直接使用
       config.headers.Authorization = token
@@ -42,8 +42,8 @@ request.interceptors.response.use(
     if (error.response) {
       const { status, data } = error.response
       if (status === 401) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
+        sessionStorage.removeItem('token')
+        sessionStorage.removeItem('user')
         router.push('/login')
         ElMessage.error('登录已过期，请重新登录')
       } else {
