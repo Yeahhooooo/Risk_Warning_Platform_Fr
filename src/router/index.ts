@@ -19,6 +19,18 @@ const routes: RouteRecordRaw[] = [
     name: 'Home',
     component: () => import('@/views/Home.vue'),
     meta: { title: '首页', requiresAuth: true }
+  },
+  {
+    path: '/enterprise',
+    name: 'Enterprise',
+    component: () => import('@/views/Enterprise.vue'),
+    meta: { title: '企业管理', requiresAuth: true }
+  },
+  {
+    path: '/project',
+    name: 'Project',
+    component: () => import('@/views/Project.vue'),
+    meta: { title: '项目管理', requiresAuth: true }
   }
 ]
 

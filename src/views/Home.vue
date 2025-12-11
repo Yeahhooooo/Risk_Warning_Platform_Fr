@@ -5,6 +5,13 @@
         <div class="logo">
           <h1>风险合规预警系统</h1>
         </div>
+        <div class="nav-menu">
+          <el-menu mode="horizontal" :default-active="activeMenu" router>
+            <el-menu-item index="/">首页</el-menu-item>
+            <el-menu-item index="/enterprise">企业管理</el-menu-item>
+            <el-menu-item index="/project">项目管理</el-menu-item>
+          </el-menu>
+        </div>
         <div class="user-info">
           <el-dropdown @command="handleCommand">
             <span class="user-dropdown">
@@ -63,12 +70,13 @@ import { useUserStore } from '@/stores/user'
 import { ArrowDown, Document, DataAnalysis, Warning } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
+const activeMenu = '/'
 
 const handleCommand = (command: string) => {
   if (command === 'logout') {
     userStore.logout()
   } else if (command === 'profile') {
-    // TODO: 跳转到个人中心
+    // 个人中心功能
   }
 }
 </script>
@@ -91,6 +99,15 @@ const handleCommand = (command: string) => {
     font-size: 20px;
     color: #333;
     margin: 0;
+  }
+
+  .nav-menu {
+    flex: 1;
+    margin-left: 40px;
+
+    :deep(.el-menu) {
+      border-bottom: none;
+    }
   }
 
   .user-dropdown {
@@ -159,4 +176,3 @@ const handleCommand = (command: string) => {
   }
 }
 </style>
-

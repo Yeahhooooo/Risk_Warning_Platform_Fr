@@ -21,3 +21,8 @@ export function updateProfile(data: Partial<UserResponse>): Promise<Result<UserR
   return request.put('/org/user/profile', data)
 }
 
+// 根据用户ID获取用户信息
+export function getUserById(userId: number): Promise<Result<UserResponse>> {
+  return request.get(`org/user/${userId}`)
+}
+
