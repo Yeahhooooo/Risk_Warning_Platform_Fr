@@ -26,3 +26,8 @@ export function getUserById(userId: number): Promise<Result<UserResponse>> {
   return request.get(`org/user/${userId}`)
 }
 
+// 根据邮箱获取用户信息
+export function getUserByEmail(email: string): Promise<Result<UserResponse>> {
+  return request.get('org/user/email', { params: { email } })
+}
+

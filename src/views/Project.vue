@@ -249,13 +249,12 @@
             :rules="addMemberFormRules"
             label-width="100px"
           >
-            <el-form-item label="用户ID" prop="userId">
-              <el-input-number
-                v-model="addMemberForm.userId"
-                :min="1"
-                placeholder="请输入用户ID"
+            <el-form-item label="用户邮箱" prop="email">
+              <el-input
+                v-model="addMemberForm.email"
+                placeholder="请输入用户邮箱"
                 style="width: 100%"
-                controls-position="right"
+                clearable
               />
             </el-form-item>
             <el-form-item label="角色" prop="role">
@@ -405,7 +404,7 @@ import { ArrowDown, Plus, UploadFilled } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createProject, getAllProjects, getProjectMembers, addProjectMember } from '@/api/project'
 import { getAllEnterprises } from '@/api/enterprise'
-import { getUserById } from '@/api/user'
+import { getUserByEmail } from '@/api/user'
 import { uploadFileWithChunks, confirmFileUpload, deleteUploadFile, type UploadProgressInfo } from '@/api/fileUpload'
 import type { Project, ProjectCreateRequest, ProjectMemberResponse, Enterprise, AddMemberRequest, UserResponse } from '@/types'
 import {
@@ -514,16 +513,17 @@ const formRules: FormRules = {
   ]
 }
 
-// 添加成员表单
-const addMemberForm = reactive<AddMemberRequest>({
-  userId: 0,
+// 添加成员表单（email用于搜索，searchedUserId用于提交）
+const addMemberForm = reactive({
+  email: '',
   role: ''
 })
+const searchedUserId = ref<number | null>(null)
 
 // 添加成员表单验证规则
 const addMemberFormRules: FormRules = {
-  userId: [
-    { required: true, message: '请输入用户ID', trigger: 'blur' }
+  email: [
+    { required: true, message: '请输入用户邮箱', trigger: 'blur' }
   ],
   role: [
     { required: true, message: '请选择角色', trigger: 'change' }
@@ -672,31 +672,35 @@ const getRoleType = (role: string): 'primary' | 'success' | 'warning' | 'info' |
 
 // 显示添加成员对话框
 const showAddMemberDialog = () => {
-  addMemberForm.userId = 0
+  addMemberForm.email = ''
   addMemberForm.role = ''
   searchedUser.value = null
+  searchedUserId.value = null
   addMemberFormRef.value?.clearValidate()
   addMemberDialogVisible.value = true
 }
 
 // 搜索用户
 const searchUser = async () => {
-  if (!addMemberForm.userId || addMemberForm.userId <= 0) {
-    ElMessage.warning('请输入有效的用户ID')
+  if (!addMemberForm.email || !addMemberForm.email.trim()) {
+    ElMessage.warning('请输入用户邮箱')
     return
   }
   searchingUser.value = true
   try {
-    const res = await getUserById(addMemberForm.userId)
+    const res = await getUserByEmail(addMemberForm.email.trim())
     if (res.data) {
       searchedUser.value = res.data
+      searchedUserId.value = res.data.id
       ElMessage.success('查询成功')
     } else {
       searchedUser.value = null
+      searchedUserId.value = null
       ElMessage.warning('未找到该用户')
     }
   } catch (error) {
     searchedUser.value = null
+    searchedUserId.value = null
     ElMessage.error('查询用户失败')
   } finally {
     searchingUser.value = false
@@ -713,9 +717,18 @@ const handleAddMember = async () => {
     return
   }
 
+  if (!searchedUserId.value) {
+    ElMessage.warning('请先查询用户信息')
+    return
+  }
+
   addingMember.value = true
   try {
-    await addProjectMember(currentProject.value.id, addMemberForm)
+    const memberRequest: AddMemberRequest = {
+      userId: searchedUserId.value,
+      role: addMemberForm.role
+    }
+    await addProjectMember(currentProject.value.id, memberRequest)
     ElMessage.success('成员添加成功')
     addMemberDialogVisible.value = false
     // 刷新成员列表
