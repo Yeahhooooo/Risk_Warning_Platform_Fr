@@ -1,35 +1,7 @@
 <template>
   <div class="enterprise-container">
-    <el-container>
-      <el-header class="header">
-        <div class="logo">
-          <h1>风险合规预警系统</h1>
-        </div>
-        <div class="nav-menu">
-          <el-menu mode="horizontal" :default-active="activeMenu" router>
-            <el-menu-item index="/">首页</el-menu-item>
-            <el-menu-item index="/enterprise">企业管理</el-menu-item>
-            <el-menu-item index="/project">项目管理</el-menu-item>
-          </el-menu>
-        </div>
-        <div class="user-info">
-          <el-dropdown @command="handleCommand">
-            <span class="user-dropdown">
-              <el-avatar :size="32" :src="userStore.user?.avatarUrl || undefined">
-                {{ userStore.user?.fullName?.charAt(0) }}
-              </el-avatar>
-              <span class="user-name">{{ userStore.user?.fullName }}</span>
-              <el-icon><ArrowDown /></el-icon>
-            </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人中心</el-dropdown-item>
-                <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-      </el-header>
+    <el-container direction="vertical">
+      <AppHeader />
 
       <el-main class="main">
         <div class="page-header">
@@ -212,16 +184,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { useUserStore } from '@/stores/user'
-import { ArrowDown, Plus } from '@element-plus/icons-vue'
+import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createEnterprise, getAllEnterprises, getEnterpriseMembers, addEnterpriseMember } from '@/api/enterprise'
 import { getUserByEmail } from '@/api/user'
 import type { Enterprise, EnterpriseCreateRequest, EnterpriseUserResponse, AddMemberRequest, UserResponse } from '@/types'
 import { enterpriseRoleOptions } from '@/types'
-
-const userStore = useUserStore()
-const activeMenu = '/enterprise'
+import AppHeader from '@/components/AppHeader.vue'
 
 // 状态
 const loading = ref(false)
@@ -429,12 +398,6 @@ const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString('zh-CN')
 }
 
-// 处理下拉菜单命令
-const handleCommand = (command: string) => {
-  if (command === 'logout') {
-    userStore.logout()
-  }
-}
 
 onMounted(() => {
   fetchEnterprises()
@@ -447,40 +410,6 @@ onMounted(() => {
   background: #f5f7fa;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #fff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  padding: 0 24px;
-
-  .logo h1 {
-    font-size: 20px;
-    color: #333;
-    margin: 0;
-  }
-
-  .nav-menu {
-    flex: 1;
-    margin-left: 40px;
-
-    :deep(.el-menu) {
-      border-bottom: none;
-    }
-  }
-
-  .user-dropdown {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-
-    .user-name {
-      color: #333;
-    }
-  }
-}
 
 .main {
   padding: 24px;
