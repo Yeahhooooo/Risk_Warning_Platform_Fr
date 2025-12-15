@@ -31,6 +31,12 @@ const routes: RouteRecordRaw[] = [
     name: 'Project',
     component: () => import('@/views/Project.vue'),
     meta: { title: '项目管理', requiresAuth: true }
+  },
+  {
+    path: '/assessment-result',
+    name: 'AssessmentResult',
+    component: () => import('@/views/AssessmentResult.vue'),
+    meta: { title: '评估结果', requiresAuth: true }
   }
 ]
 
@@ -58,4 +64,3 @@ router.beforeEach((to, _from, next) => {
 })
 
 export default router
-
