@@ -248,7 +248,7 @@ const mockIndicators: EsIndicator[] = [
     indicator_level: 1,
     parent_indicator_id: null,
     dimension: '合规',
-    industry: '通用',
+    industry: ['通用'],
     region: 'CN',
     tags: ['设计', '开发'],
     max_score: 100,
@@ -265,7 +265,7 @@ const mockIndicators: EsIndicator[] = [
     indicator_level: 2,
     parent_indicator_id: '1',
     dimension: '合规',
-    industry: '通用',
+    industry: ['通用'],
     region: 'CN',
     tags: ['法规'],
     max_score: 100,
@@ -281,7 +281,7 @@ const mockIndicators: EsIndicator[] = [
     indicator_level: 2,
     parent_indicator_id: '1',
     dimension: '合规',
-    industry: '通用',
+    industry: ['通用'],
     region: 'CN',
     tags: ['国标'],
     max_score: 100,
@@ -297,7 +297,7 @@ const mockIndicators: EsIndicator[] = [
     indicator_level: 2,
     parent_indicator_id: '1',
     dimension: '合规',
-    industry: '电子',
+    industry: ['电子'],
     region: 'CN',
     tags: ['有害物质'],
     max_score: 100,
@@ -314,7 +314,7 @@ const mockIndicators: EsIndicator[] = [
     indicator_level: 3,
     parent_indicator_id: '1.1',
     dimension: '合规',
-    industry: '通用',
+    industry: ['通用'],
     region: 'CN',
     tags: ['质量法'],
     max_score: 10,
@@ -330,7 +330,7 @@ const mockIndicators: EsIndicator[] = [
     indicator_level: 3,
     parent_indicator_id: '1.1',
     dimension: '合规',
-    industry: '通用',
+    industry: ['通用'],
     region: 'CN',
     tags: ['审查'],
     max_score: 10,
@@ -346,7 +346,7 @@ const mockIndicators: EsIndicator[] = [
     indicator_level: 3,
     parent_indicator_id: '1.1',
     dimension: '合规',
-    industry: '通用',
+    industry: ['通用'],
     region: 'CN',
     tags: ['违规'],
     max_score: 10,
@@ -363,7 +363,7 @@ const mockIndicators: EsIndicator[] = [
     indicator_level: 3,
     parent_indicator_id: '1.2',
     dimension: '合规',
-    industry: '通用',
+    industry: ['通用'],
     region: 'CN',
     tags: ['强制标准'],
     max_score: 10,
@@ -379,7 +379,7 @@ const mockIndicators: EsIndicator[] = [
     indicator_level: 3,
     parent_indicator_id: '1.2',
     dimension: '合规',
-    industry: '通用',
+    industry: ['通用'],
     region: 'CN',
     tags: ['研发'],
     max_score: 10,
@@ -395,7 +395,7 @@ const mockIndicators: EsIndicator[] = [
     indicator_level: 3,
     parent_indicator_id: '1.2',
     dimension: '合规',
-    industry: '通用',
+    industry: ['通用'],
     region: 'CN',
     tags: ['整改'],
     max_score: 10,
@@ -412,7 +412,7 @@ const mockIndicators: EsIndicator[] = [
     indicator_level: 3,
     parent_indicator_id: '1.3',
     dimension: '合规',
-    industry: '电子',
+    industry: ['电子'],
     region: 'CN',
     tags: ['污染控制'],
     max_score: 10,
@@ -756,46 +756,12 @@ const exportReport = () => {
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
 }
 
-:deep(.el-table) {
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-:deep(.table-header) {
-  background-color: #f5f7fa !important;
-  color: #606266;
-  font-weight: 600;
-}
-
-:deep(.high-risk-row) {
-  background-color: #fef0f0;
-}
-
 :deep(.high-risk-row:hover > td) {
   background-color: #fde2e2 !important;
 }
 
-:deep(.medium-risk-row) {
-  background-color: #fdf6ec;
-}
-
 :deep(.medium-risk-row:hover > td) {
   background-color: #faecd8 !important;
-}
-
-.level-1 {
-  font-weight: 700;
-  font-size: 15px;
-  color: #303133;
-}
-
-.level-2 {
-  font-weight: 600;
-  color: #606266;
-}
-
-.level-3 {
-  color: #606266;
 }
 
 .description-text {
@@ -829,24 +795,6 @@ const exportReport = () => {
 
 .score-cell {
   font-family: 'Roboto', sans-serif;
-}
-
-.score-high {
-  color: #67c23a;
-  font-weight: bold;
-  font-size: 16px;
-}
-
-.score-medium {
-  color: #e6a23c;
-  font-weight: bold;
-  font-size: 16px;
-}
-
-.score-low {
-  color: #f56c6c;
-  font-weight: bold;
-  font-size: 16px;
 }
 
 .max-score {

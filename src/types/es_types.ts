@@ -10,7 +10,7 @@ export interface EsIndicator {
   indicator_level: number;
   parent_indicator_id: string | null;
   dimension: string;
-  industry: string;
+  industry: string[];
   region: string;
   tags: string[];
   max_score: number;
