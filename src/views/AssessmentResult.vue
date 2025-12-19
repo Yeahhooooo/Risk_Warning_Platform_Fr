@@ -25,6 +25,7 @@
           :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
           :row-class-name="tableRowClassName"
           header-cell-class-name="table-header"
+          :indent="24"
         >
           <el-table-column prop="name" label="指标名称" min-width="250">
             <template #default="scope">
@@ -138,16 +139,22 @@ const buildTree = (flatData: IndicatorNode[]): IndicatorNode[] => {
           parent.children = []
         }
         parent.children.push(node)
+      } else {
+        // 如果找不到父节点，将其作为根节点
+        console.warn(`找不到父节点 ${item.parent_indicator_id}，将 ${item.id} 作为根节点`)
+        roots.push(node)
       }
     }
   })
 
-  // 清理空的 children 数组
+  // 清理空的 children 数组并设置 hasChildren 属性
   const cleanEmptyChildren = (nodes: IndicatorNode[]) => {
     nodes.forEach(node => {
       if (node.children && node.children.length === 0) {
         delete node.children
-      } else if (node.children) {
+        delete (node as any).hasChildren
+      } else if (node.children && node.children.length > 0) {
+        (node as any).hasChildren = true
         cleanEmptyChildren(node.children)
       }
     })
@@ -699,6 +706,9 @@ onMounted(() => {
   const mergedData = mergeIndicatorsWithRisks(mockIndicators, mockRisks)
   // 2. 将扁平数据转换为树形结构
   tableData.value = buildTree(mergedData)
+
+  // 调试：打印树形结构
+  console.log('Tree structure:', JSON.stringify(tableData.value, null, 2))
 })
 
 const getRiskLevelType = (level?: string) => {
@@ -806,6 +816,70 @@ const exportReport = () => {
 .risk-tag {
   min-width: 60px;
   font-weight: bold;
+}
+
+/* 树形表格层级样式 */
+.level-1 {
+  font-weight: 600;
+  font-size: 15px;
+  color: #303133;
+}
+
+.level-2 {
+  font-weight: 500;
+  font-size: 14px;
+  color: #606266;
+}
+
+.level-3 {
+  font-weight: 400;
+  font-size: 13px;
+  color: #606266;
+}
+
+/* 分数显示样式 */
+.score-low {
+  color: #f56c6c;
+  font-weight: bold;
+}
+
+.score-medium {
+  color: #e6a23c;
+  font-weight: bold;
+}
+
+.score-high {
+  color: #67c23a;
+  font-weight: bold;
+}
+
+/* 确保 Element Plus 树形表格的缩进正确应用 */
+:deep(.el-table__body .el-table__row .el-table__cell:first-child .cell) {
+  display: flex;
+  align-items: center;
+}
+
+/* 强制应用 Element Plus 树形结构的缩进 */
+:deep(.el-table__indent) {
+  padding-left: 0 !important;
+}
+
+/* 确保每个层级的缩进正确显示 */
+:deep(.el-table__placeholder) {
+  display: inline-block;
+  width: 18px;
+  min-width: 18px;
+}
+
+/* 表格单元格样式，确保内容正确显示 */
+:deep(.el-table .cell) {
+  word-break: break-word;
+  line-height: 1.6;
+}
+
+/* 确保树形表格的展开图标和内容对齐 */
+:deep(.el-table__expand-icon) {
+  margin-right: 8px;
 }
 </style>
 
