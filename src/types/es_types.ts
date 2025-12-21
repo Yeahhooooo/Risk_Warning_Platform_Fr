@@ -145,3 +145,21 @@ export interface EsRegulation {
   vector?: number[];
   created_at: string;
 }
+
+/**
+ * 风险维度枚举
+ * 对应后端的 RiskDimension 枚举，用于分类展示风险指标
+ */
+export enum RiskDimension {
+  ENTERPRISE_RELATED_RISK = '企业关联方风险',
+  PRODUCT_LEGITIMACY_RISK = '产品合规风险',
+  LABOR_LEGITIMACY_RISK = '劳务合规风险',
+  ENTERPRISE_CREDIT_RISK = '企业信用风险',
+  ENTERPRISE_INTERNATIONAL_COOPERATION_RISK = '企业国际合作风险',
+  SUPPLY_CHAIN_RISK = '供应链风险'
+}
+
+/**
+ * 风险维度列表，用于侧边栏菜单展示
+ */
+export const RiskDimensionList: string[] = Object.values(RiskDimension)

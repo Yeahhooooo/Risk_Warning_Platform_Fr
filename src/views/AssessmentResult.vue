@@ -1,22 +1,55 @@
 <template>
   <div class="assessment-result-container">
     <AppHeader />
-    <div class="main-content">
-      <div class="page-header">
-        <h2>产品法律风险体系指标评估结果</h2>
-        <div class="actions">
-          <el-select v-model="selectedRiskLevel" placeholder="风险等级筛选" style="width: 150px; margin-right: 10px;">
-            <el-option label="全部等级" value="" />
-            <el-option label="高风险" value="高" />
-            <el-option label="中风险" value="中" />
-            <el-option label="低风险" value="低" />
-          </el-select>
-          <el-button type="primary" @click="exportReport">导出报告</el-button>
+    <div class="page-title">
+      <h1>评估结果报告</h1>
+    </div>
+    <div class="content-wrapper">
+      <!-- 左侧维度侧边栏 -->
+      <div class="dimension-sidebar">
+        <div class="sidebar-header">
+          <h3>风险维度</h3>
         </div>
+        <el-menu
+          :default-active="selectedDimension"
+          class="dimension-menu"
+          @select="handleDimensionSelect"
+        >
+          <el-menu-item
+            v-for="dim in RiskDimensionList"
+            :key="dim"
+            :index="dim"
+            :class="{ 'has-data': dimensionHasData(dim) }"
+          >
+            <el-icon><Folder /></el-icon>
+            <span>{{ dim }}</span>
+            <el-badge
+              v-if="getDimensionRiskCount(dim) > 0"
+              :value="getDimensionRiskCount(dim)"
+              class="dimension-badge"
+              :type="getDimensionBadgeType(dim)"
+            />
+          </el-menu-item>
+        </el-menu>
       </div>
 
-      <el-card class="result-card" shadow="hover">
-        <el-table
+      <!-- 右侧主内容区 -->
+      <div class="main-content">
+        <div class="page-header">
+          <h2>{{ selectedDimension || '请选择风险维度' }}</h2>
+          <div class="actions">
+            <el-select v-model="selectedRiskLevel" placeholder="风险等级筛选" style="width: 150px; margin-right: 10px;">
+              <el-option label="全部等级" value="" />
+              <el-option label="高风险" value="高" />
+              <el-option label="中风险" value="中" />
+              <el-option label="低风险" value="低" />
+            </el-select>
+            <el-button type="primary" @click="exportReport">导出报告</el-button>
+          </div>
+        </div>
+
+        <el-card v-if="selectedDimension && filteredData.length > 0" class="result-card" shadow="hover">
+          <el-table
           :data="filteredData"
           style="width: 100%; margin-bottom: 20px;"
           row-key="id"
@@ -74,17 +107,30 @@
              </template>
           </el-table-column>
         </el-table>
-      </el-card>
+        </el-card>
+
+        <!-- 空状态提示 -->
+        <el-empty
+          v-else-if="selectedDimension && filteredData.length === 0"
+          description="该维度下暂无风险评估数据"
+        />
+        <el-empty
+          v-else
+          description="请从左侧选择一个风险维度查看评估结果"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { Document } from '@element-plus/icons-vue'
+import { Document, Folder } from '@element-plus/icons-vue'
 import AppHeader from '@/components/AppHeader.vue'
 import type { EsIndicator, EsRisk } from '@/types/es_types'
+import { RiskDimensionList } from '@/types/es_types'
 import { mockIndicators, mockRisks } from '@/mock/assessmentData'
+
 
 /**
  * 前端展示用的聚合结构，用于树形表格展示
@@ -111,6 +157,51 @@ interface IndicatorNode extends EsIndicator {
 
 const tableData = ref<IndicatorNode[]>([])
 const selectedRiskLevel = ref('')
+const selectedDimension = ref('')
+
+// 存储所有维度的合并数据（未建树）
+const allMergedData = ref<IndicatorNode[]>([])
+
+/**
+ * 处理维度选择
+ */
+const handleDimensionSelect = (dimensionName: string) => {
+  selectedDimension.value = dimensionName
+  // 筛选当前维度的指标并建树
+  const dimensionIndicators = allMergedData.value.filter(
+    item => item.dimension === dimensionName
+  )
+  tableData.value = buildTree(dimensionIndicators)
+}
+
+/**
+ * 判断维度是否有数据
+ */
+const dimensionHasData = (dimensionName: string): boolean => {
+  return allMergedData.value.some(item => item.dimension === dimensionName)
+}
+
+/**
+ * 获取维度的风险数量（有风险的三级指标数量）
+ */
+const getDimensionRiskCount = (dimensionName: string): number => {
+  return allMergedData.value.filter(
+    item => item.dimension === dimensionName && item.risk_level && item.indicator_level === 3
+  ).length
+}
+
+/**
+ * 获取维度徽章类型（根据最高风险等级）
+ */
+const getDimensionBadgeType = (dimensionName: string): 'danger' | 'warning' | 'success' | 'info' => {
+  const dimensionRisks = allMergedData.value.filter(
+    item => item.dimension === dimensionName && item.risk_level
+  )
+  if (dimensionRisks.some(r => r.risk_level === '高')) return 'danger'
+  if (dimensionRisks.some(r => r.risk_level === '中')) return 'warning'
+  if (dimensionRisks.some(r => r.risk_level === '低')) return 'success'
+  return 'info'
+}
 
 /**
  * 将扁平的指标数据转换为树形结构
@@ -243,11 +334,18 @@ const getScoreClass = (score: number, maxScore: number) => {
 
 onMounted(() => {
   // 1. 合并指标数据与风险评估结果
-  const mergedData = mergeIndicatorsWithRisks(mockIndicators, mockRisks)
-  // 2. 将扁平数据转换为树形结构
-  tableData.value = buildTree(mergedData)
+  allMergedData.value = mergeIndicatorsWithRisks(mockIndicators, mockRisks)
+
+  // 2. 默认选中第一个有数据的维度
+  const firstDimensionWithData = RiskDimensionList.find(dim =>
+    allMergedData.value.some(item => item.dimension === dim)
+  )
+  if (firstDimensionWithData) {
+    handleDimensionSelect(firstDimensionWithData)
+  }
 
   // 调试：打印树形结构
+  console.log('All merged data:', allMergedData.value)
   console.log('Tree structure:', JSON.stringify(tableData.value, null, 2))
 })
 
@@ -276,10 +374,104 @@ const exportReport = () => {
   background-color: #f0f2f5;
 }
 
+.page-title {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 20px 20px 0;
+}
+
+.page-title h1 {
+  margin: 0;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  font-size: 22px;
+  font-weight: 600;
+  color: #1f2f3d;
+}
+
+.content-wrapper {
+  display: flex;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 20px;
+  gap: 20px;
+}
+
+/* 左侧维度侧边栏样式 */
+.dimension-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #ebeef5;
+  background: linear-gradient(135deg, #409eff 0%, #337ecc 100%);
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.dimension-menu {
+  border-right: none;
+}
+
+.dimension-menu .el-menu-item {
+  height: 56px;
+  line-height: 56px;
+  font-size: 14px;
+  border-left: 3px solid transparent;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 15px;
+}
+
+.dimension-menu .el-menu-item:hover {
+  background-color: #ecf5ff;
+}
+
+.dimension-menu .el-menu-item.is-active {
+  background-color: #ecf5ff;
+  border-left-color: #409eff;
+  color: #409eff;
+}
+
+.dimension-menu .el-menu-item.has-data {
+  font-weight: 500;
+}
+
+.dimension-menu .el-menu-item .el-icon {
+  margin-right: 8px;
+  font-size: 18px;
+}
+
+.dimension-badge {
+  margin-left: auto;
+}
+
+:deep(.dimension-badge .el-badge__content) {
+  font-size: 11px;
+  padding: 0 6px;
+  height: 18px;
+  line-height: 18px;
+}
+
+/* 右侧主内容区 */
 .main-content {
-  max-width: 1400px;
-  margin: 20px auto;
-  padding: 0 20px;
+  flex: 1;
+  min-width: 0;
 }
 
 .page-header {
