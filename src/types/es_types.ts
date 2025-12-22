@@ -1,4 +1,42 @@
 /**
+ * 问卷选项结构
+ * 对应 questionnaire_form.options 的嵌套结构
+ */
+export interface QuestionOption {
+  value: string;
+  label: string;
+  score_mapping: number;
+  is_default: boolean;
+}
+
+/**
+ * 问卷验证规则
+ * 对应 questionnaire_form.validation_rules 的结构
+ */
+export interface ValidationRules {
+  min_length?: number;
+  max_length?: number;
+  min_value?: number;
+  max_value?: number;
+  pattern?: string;
+  custom_validation?: string;
+}
+
+/**
+ * 问卷表单结构
+ * 对应 questionnaire_form 的完整结构
+ */
+export interface QuestionnaireForm {
+  question_type: string;
+  question_text: string;
+  input_type: string;
+  validation_rules?: ValidationRules;
+  options?: QuestionOption[];
+  help_text?: string;
+  placeholder?: string;
+}
+
+/**
  * 对应 es_mappings.json 中的 t_indicator 索引结构
  * 用于存储指标体系定义，包含指标的基本信息、计算规则、风险规则以及问卷表单配置
  */
@@ -42,27 +80,7 @@ export interface EsIndicator {
       risk_level_increase: string;
     };
   };
-  questionnaire_form?: {
-    question_type: string;
-    question_text: string;
-    input_type: string;
-    validation_rules?: {
-      min_length?: number;
-      max_length?: number;
-      min_value?: number;
-      max_value?: number;
-      pattern?: string;
-      custom_validation?: string;
-    };
-    options?: Array<{
-      value: string;
-      label: string;
-      score_mapping: number;
-      is_default: boolean;
-    }>;
-    help_text?: string;
-    placeholder?: string;
-  };
+  questionnaire_form?: QuestionnaireForm;
   vector?: number[];
   created_at: string;
 }

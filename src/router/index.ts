@@ -33,6 +33,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '项目管理', requiresAuth: true }
   },
   {
+    path: '/questionnaire',
+    name: 'Questionnaire',
+    component: () => import('@/views/Questionnaire.vue'),
+    meta: { title: '风险评估问卷', requiresAuth: true }
+  },
+  {
     path: '/assessment-result',
     name: 'AssessmentResult',
     component: () => import('@/views/AssessmentResult.vue'),
