@@ -4,6 +4,7 @@ import type { UserResponse } from '@/types'
 import { login as loginApi, register as registerApi, getCurrentUser } from '@/api/user'
 import type { LoginRequest, RegisterRequest } from '@/types'
 import router from '@/router'
+import websocketService from '@/utils/websocket'
 
 export const useUserStore = defineStore('user', () => {
   const user = ref<UserResponse | null>(null)
@@ -14,6 +15,10 @@ export const useUserStore = defineStore('user', () => {
     const userStr = sessionStorage.getItem('user')
     if (userStr) {
       user.value = JSON.parse(userStr)
+      // 如果用户信息存在且有token，自动重连WebSocket
+      if (user.value && token.value) {
+        websocketService.connect(user.value.id)
+      }
     }
   }
 
@@ -26,6 +31,12 @@ export const useUserStore = defineStore('user', () => {
     user.value = res.data.user
     sessionStorage.setItem('token', fullToken)
     sessionStorage.setItem('user', JSON.stringify(res.data.user))
+
+    // 登录成功后连接WebSocket
+    if (user.value) {
+      websocketService.connect(user.value.id)
+    }
+
     return res
   }
 
@@ -45,6 +56,9 @@ export const useUserStore = defineStore('user', () => {
 
   // 退出登录
   const logout = () => {
+    // 断开WebSocket连接
+    websocketService.disconnect()
+
     token.value = null
     user.value = null
     sessionStorage.removeItem('token')
