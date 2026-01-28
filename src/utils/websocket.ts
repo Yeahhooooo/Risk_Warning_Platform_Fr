@@ -205,6 +205,8 @@ class WebSocketService {
           })
         }, 1500)
       }
+    } else if (notificationType === 'PROCESSING_STARTED') {
+      ElMessage.info('评估已开始，正在处理中...')
     }
   }
 
@@ -351,4 +353,3 @@ class WebSocketService {
 export const websocketService = new WebSocketService()
 
 export default websocketService
-

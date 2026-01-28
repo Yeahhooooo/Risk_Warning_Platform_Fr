@@ -333,6 +333,13 @@
               <p>总进度: {{ uploadStats.completed }}/{{ uploadStats.total }} 文件</p>
               <el-progress :percentage="overallProgress" />
             </div>
+            <el-alert
+              v-if="isAssessing"
+              title="文件已提交，正在评估中，结果生成后将自动通知"
+              type="info"
+              show-icon
+              class="assessing-alert"
+            />
           </div>
         </el-drawer>
       </el-main>
@@ -395,6 +402,7 @@ interface UploadFile {
 const uploadFiles = ref<UploadFile[]>([])
 const isDragOver = ref(false)
 const isConfirming = ref(false)
+const isAssessing = ref(false)
 let fileIdCounter = 0
 const uploadStats = reactive({
   total: 0,
@@ -578,7 +586,8 @@ const getStatusLabel = (status: string): string => {
     'IN_PROGRESS': '进行中',
     'COMPLETED': '已完成',
     'CANCELLED': '已取消',
-    'PENDING': '待开始'
+    'PENDING': '待开始',
+    'ASSESSING': '正在评估中'
   }
   return map[status] || status
 }
@@ -589,7 +598,8 @@ const getStatusType = (status: string): 'primary' | 'success' | 'warning' | 'inf
     'IN_PROGRESS': 'primary',
     'COMPLETED': 'success',
     'CANCELLED': 'info',
-    'PENDING': 'warning'
+    'PENDING': 'warning',
+    'ASSESSING': 'warning'
   }
   return map[status] || 'info'
 }
@@ -708,6 +718,7 @@ const resetUploadState = () => {
   uploadFiles.value = []
   isDragOver.value = false
   isConfirming.value = false
+  isAssessing.value = false
   uploadStats.total = 0
   uploadStats.completed = 0
   uploadStats.failed = 0
@@ -866,7 +877,13 @@ const confirmAllUploads = async () => {
   try {
     await confirmFileUpload(currentProject.value.id)
     uploadStats.completed = successFiles.length
-    ElMessage.success('所有文件上传确认完成')
+    isAssessing.value = true
+    currentProject.value.status = 'ASSESSING'
+    const idx = projects.value.findIndex(p => p.id === currentProject.value?.id)
+    if (idx > -1) {
+      projects.value[idx] = { ...projects.value[idx], status: 'ASSESSING' }
+    }
+    ElMessage.info('文件已提交，正在评估中，评估完成后将生成结果')
   } catch (error: any) {
     ElMessage.error(error.message || '确认上传失败')
     console.error('确认上传失败:', error)
@@ -932,6 +949,9 @@ onMounted(() => {
   background: #f5f7fa;
 }
 
+.assessing-alert {
+  margin-top: 16px;
+}
 
 .main {
   padding: 24px;
@@ -1089,4 +1109,3 @@ onMounted(() => {
   }
 }
 </style>
-
