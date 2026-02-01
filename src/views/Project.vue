@@ -29,11 +29,14 @@
           </el-table-column>
           <el-table-column prop="startDate" label="开始日期" width="120" />
           <el-table-column prop="plannedCompletionDate" label="计划完成日期" width="130" />
-          <el-table-column label="操作" width="280" fixed="right">
+          <el-table-column label="操作" width="320" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link @click="viewMembers(row)">查看成员</el-button>
               <el-button type="primary" link @click="viewDetail(row)">查看详情</el-button>
-              <el-button type="primary" link @click="openUploadDrawer(row)">上传文件</el-button>
+              <el-button type="warning" size="small" @click="openUploadDrawer(row)">
+                <el-icon style="margin-right: 4px"><DataAnalysis /></el-icon>
+                风险评估
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -350,7 +353,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, UploadFilled } from '@element-plus/icons-vue'
+import { Plus, UploadFilled, DataAnalysis } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createProject, getAllProjects, getProjectMembers, addProjectMember } from '@/api/project'
 import { getAllEnterprises } from '@/api/enterprise'
