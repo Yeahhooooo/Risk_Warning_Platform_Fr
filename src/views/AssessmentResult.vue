@@ -1,5 +1,15 @@
 <template>
   <div class="assessment-result-container">
+    <!-- 全屏等待遮罩 -->
+    <div v-if="isWaiting" class="waiting-overlay">
+      <div class="waiting-content">
+        <el-icon class="loading-icon"><Loading /></el-icon>
+        <h2>正在评估中...</h2>
+        <p>系统正在分析您上传的文件，请稍候</p>
+        <p class="waiting-hint">评估完成后将自动显示结果</p>
+      </div>
+    </div>
+
     <AppHeader />
 
     <div class="page-title">
@@ -90,9 +100,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { DataAnalysis, TrendCharts, Document } from '@element-plus/icons-vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { DataAnalysis, TrendCharts, Document, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import AppHeader from '@/components/AppHeader.vue'
 import OverviewReport from '@/components/report/OverviewReport.vue'
@@ -104,9 +114,18 @@ import type {
   AssessmentDetailVO
 } from '@/types/report'
 import { getIndicatorDistribution, getRiskList, getAssessmentGeneral } from '@/api/report'
+import websocketService from '@/utils/websocket'
+import type { NotificationMessage } from '@/utils/websocket'
 
 const route = useRoute()
-const assessmentId = ref<number>(Number(route.query.assessmentId) || 118)
+const router = useRouter()
+
+// 等待状态 - 从URL参数获取
+const isWaiting = ref(route.query.waiting === 'true')
+const waitingProjectId = ref<number | null>(
+  route.query.projectId ? Number(route.query.projectId) : null
+)
+const assessmentId = ref<number>(Number(route.query.assessmentId) || 0)
 
 // 视图状态
 const activeView = ref('overview')
@@ -241,10 +260,59 @@ const loadRisksData = async () => {
   }
 }
 
+// WebSocket消息处理器
+const handleNotificationMessage = (message: NotificationMessage) => {
+  const { notificationType, assessmentId: msgAssessmentId, projectId: msgProjectId } = message
+
+  // 检查是否是评估完成的消息
+  if (
+    (notificationType === 'ASSESSMENT_COMPLETED' ||
+     notificationType === 'ASSESSMENT_COMPLETE' ||
+     notificationType === 'PROCESSING_COMPLETE') &&
+    msgAssessmentId
+  ) {
+    // 如果当前是等待状态，且projectId匹配（或没有projectId限制）
+    if (isWaiting.value) {
+      // 如果有projectId限制，检查是否匹配
+      if (waitingProjectId.value && msgProjectId && msgProjectId !== waitingProjectId.value) {
+        return // projectId不匹配，忽略此消息
+      }
+
+      // 更新assessmentId
+      assessmentId.value = msgAssessmentId
+
+      // 更新URL参数（不刷新页面）
+      router.replace({
+        path: '/assessment-result',
+        query: { assessmentId: msgAssessmentId.toString() }
+      })
+
+      // 关闭等待状态
+      isWaiting.value = false
+
+      ElMessage.success('评估完成，正在加载结果...')
+
+      // 加载数据
+      loadOverviewData()
+    }
+  }
+}
+
 // 初始化
 onMounted(() => {
-  // 默认加载总览数据
-  loadOverviewData()
+  // 如果是等待模式，监听WebSocket消息
+  if (isWaiting.value) {
+    websocketService.on('notification', handleNotificationMessage)
+  } else if (assessmentId.value) {
+    // 非等待模式且有assessmentId，直接加载数据
+    loadOverviewData()
+  }
+})
+
+// 清理
+onUnmounted(() => {
+  // 移除WebSocket监听器
+  websocketService.off('notification', handleNotificationMessage)
 })
 </script>
 
@@ -252,6 +320,59 @@ onMounted(() => {
 .assessment-result-container {
   min-height: 100vh;
   background-color: #f0f2f5;
+}
+
+/* 全屏等待遮罩 */
+.waiting-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.waiting-content {
+  text-align: center;
+  color: #fff;
+}
+
+.waiting-content .loading-icon {
+  font-size: 64px;
+  color: #409eff;
+  animation: rotate 1.5s linear infinite;
+  margin-bottom: 24px;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.waiting-content h2 {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+}
+
+.waiting-content p {
+  font-size: 16px;
+  margin: 8px 0;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.waiting-content .waiting-hint {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 24px;
 }
 
 .page-title {

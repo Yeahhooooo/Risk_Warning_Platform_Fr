@@ -349,6 +349,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { Plus, UploadFilled } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createProject, getAllProjects, getProjectMembers, addProjectMember } from '@/api/project'
@@ -364,6 +365,8 @@ import {
   projectRoleOptions
 } from '@/types'
 import AppHeader from '@/components/AppHeader.vue'
+
+const router = useRouter()
 
 // 状态
 const loading = ref(false)
@@ -877,13 +880,25 @@ const confirmAllUploads = async () => {
   try {
     await confirmFileUpload(currentProject.value.id)
     uploadStats.completed = successFiles.length
-    isAssessing.value = true
+
+    // 更新项目状态
     currentProject.value.status = 'ASSESSING'
     const idx = projects.value.findIndex(p => p.id === currentProject.value?.id)
     if (idx > -1) {
       projects.value[idx] = { ...projects.value[idx], status: 'ASSESSING' }
     }
-    ElMessage.info('文件已提交，正在评估中，评估完成后将生成结果')
+
+    ElMessage.success('文件已提交，正在跳转到评估结果页面...')
+
+    // 关闭抽屉并跳转到评估结果页面（等待模式）
+    uploadDrawerVisible.value = false
+    router.push({
+      path: '/assessment-result',
+      query: {
+        waiting: 'true',
+        projectId: currentProject.value.id.toString()
+      }
+    })
   } catch (error: any) {
     ElMessage.error(error.message || '确认上传失败')
     console.error('确认上传失败:', error)

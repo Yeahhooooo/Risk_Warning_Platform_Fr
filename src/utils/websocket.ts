@@ -176,6 +176,10 @@ class WebSocketService {
   private handleNotification(notification: NotificationMessage): void {
     const { notificationType, title, content, assessmentId } = notification
 
+    // 检查当前是否在评估结果页面等待中
+    const currentRoute = router.currentRoute.value
+    const isOnWaitingPage = currentRoute.path === '/assessment-result' && currentRoute.query.waiting === 'true'
+
     // 显示通知
     ElNotification({
       title: title || '系统通知',
@@ -184,7 +188,7 @@ class WebSocketService {
       duration: 5000,
       onClick: () => {
         // 点击通知跳转到评估结果页面
-        if (assessmentId) {
+        if (assessmentId && !isOnWaitingPage) {
           router.push({
             path: '/assessment-result',
             query: { assessmentId: assessmentId.toString() }
@@ -195,8 +199,9 @@ class WebSocketService {
 
     // 根据通知类型处理跳转
     if (notificationType === 'ASSESSMENT_COMPLETED' || notificationType === 'ASSESSMENT_COMPLETE' || notificationType === 'PROCESSING_COMPLETE') {
-      // 评估完成，自动跳转到评估结果页面
-      if (assessmentId) {
+      // 评估完成
+      // 如果用户已经在评估结果页面等待，不需要自动跳转（由页面自己处理）
+      if (assessmentId && !isOnWaitingPage) {
         ElMessage.success('评估已完成，正在跳转到结果页面...')
         setTimeout(() => {
           router.push({
