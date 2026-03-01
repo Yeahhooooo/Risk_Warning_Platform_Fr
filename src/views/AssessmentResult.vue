@@ -116,6 +116,12 @@ import type {
 import { getIndicatorDistribution, getRiskList, getAssessmentGeneral } from '@/api/report'
 import websocketService from '@/utils/websocket'
 import type { NotificationMessage } from '@/utils/websocket'
+import {
+  filterRisks,
+  normalizeDimension,
+  normalizeRiskLevel,
+  getDimensionBadgeType as getDimensionBadgeTypeUtil
+} from '@/utils/riskClassification'
 
 const route = useRoute()
 const router = useRouter()
@@ -146,9 +152,8 @@ const loadingRisks = ref(false)
 const availableDimensions = computed(() => {
   const dimensions = new Set<string>()
   risksData.value.forEach(risk => {
-    if (risk.dimension) {
-      dimensions.add(risk.dimension)
-    }
+    const dim = normalizeDimension(risk.dimension)
+    if (dim) dimensions.add(dim)
   })
   return Array.from(dimensions).sort()
 })
@@ -158,33 +163,18 @@ const totalRisks = computed(() => risksData.value.length)
 
 // 筛选后的风险列表
 const filteredRisks = computed(() => {
-  let result = risksData.value
-
-  // 按维度筛选
-  if (selectedDimension.value) {
-    result = result.filter(risk => risk.dimension === selectedDimension.value)
-  }
-
-  // 按风险等级筛选
-  if (selectedRiskLevel.value) {
-    result = result.filter(risk => risk.riskLevel === selectedRiskLevel.value)
-  }
-
-  return result
+  return filterRisks(risksData.value, selectedDimension.value, selectedRiskLevel.value)
 })
 
 // 获取维度风险数量
 const getDimensionRiskCount = (dimension: string): number => {
-  return risksData.value.filter(risk => risk.dimension === dimension).length
+  const dim = normalizeDimension(dimension)
+  return risksData.value.filter(risk => normalizeDimension(risk.dimension) === dim).length
 }
 
 // 获取维度徽章类型
 const getDimensionBadgeType = (dimension: string): 'danger' | 'warning' | 'success' | 'info' => {
-  const dimensionRisks = risksData.value.filter(risk => risk.dimension === dimension)
-  if (dimensionRisks.some(r => r.riskLevel === 'HIGH_RISK')) return 'danger'
-  if (dimensionRisks.some(r => r.riskLevel === 'MEDIUM_RISK')) return 'warning'
-  if (dimensionRisks.some(r => r.riskLevel === 'LOW_RISK')) return 'success'
-  return 'info'
+  return getDimensionBadgeTypeUtil(risksData.value, dimension)
 }
 
 // 菜单选择处理
@@ -483,4 +473,3 @@ onUnmounted(() => {
   padding: 0;
 }
 </style>
-

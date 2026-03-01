@@ -177,6 +177,11 @@
 import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { RiskVO } from '@/types/report'
+import {
+  normalizeRiskLevel,
+  getRiskLevelLabel as getRiskLevelLabelUtil,
+  getRiskLevelTagType as getRiskLevelTagTypeUtil
+} from '@/utils/riskClassification'
 
 interface Props {
   risks: RiskVO[]
@@ -191,35 +196,25 @@ defineEmits<{
 
 // 风险统计
 const highRiskCount = computed(() =>
-  props.risks.filter(r => r.riskLevel === 'HIGH_RISK').length
+  props.risks.filter(r => normalizeRiskLevel(r.riskLevel) === 'HIGH_RISK').length
 )
 
 const mediumRiskCount = computed(() =>
-  props.risks.filter(r => r.riskLevel === 'MEDIUM_RISK').length
+  props.risks.filter(r => normalizeRiskLevel(r.riskLevel) === 'MEDIUM_RISK').length
 )
 
 const lowRiskCount = computed(() =>
-  props.risks.filter(r => r.riskLevel === 'LOW_RISK').length
+  props.risks.filter(r => normalizeRiskLevel(r.riskLevel) === 'LOW_RISK').length
 )
 
 // 风险等级标签类型
-const getRiskLevelType = (level: string) => {
-  const typeMap: Record<string, any> = {
-    'HIGH_RISK': 'danger',
-    'MEDIUM_RISK': 'warning',
-    'LOW_RISK': 'success'
-  }
-  return typeMap[level] || 'info'
+const getRiskLevelType = (level: unknown) => {
+  return getRiskLevelTagTypeUtil(level)
 }
 
 // 风险等级标签文本
-const getRiskLevelLabel = (level: string) => {
-  const labelMap: Record<string, string> = {
-    'HIGH_RISK': '高风险',
-    'MEDIUM_RISK': '中风险',
-    'LOW_RISK': '低风险'
-  }
-  return labelMap[level] || level
+const getRiskLevelLabel = (level: unknown) => {
+  return getRiskLevelLabelUtil(level)
 }
 
 // 状态标签类型
@@ -393,4 +388,3 @@ const handleExport = () => {
   font-weight: bold;
 }
 </style>
-
