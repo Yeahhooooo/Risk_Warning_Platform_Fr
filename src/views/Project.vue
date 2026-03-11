@@ -33,7 +33,22 @@
             <template #default="{ row }">
               <el-button type="primary" link @click="viewMembers(row)">查看成员</el-button>
               <el-button type="primary" link @click="viewDetail(row)">查看详情</el-button>
-              <el-button type="warning" size="small" @click="openUploadDrawer(row)">
+              <el-button
+                v-if="row.status === 'COMPLETED'"
+                type="success"
+                size="small"
+                :loading="viewingReportProjectId === row.id"
+                @click="viewReport(row)"
+              >
+                <el-icon style="margin-right: 4px"><View /></el-icon>
+                查看报告
+              </el-button>
+              <el-button
+                v-else
+                type="warning"
+                size="small"
+                @click="openUploadDrawer(row)"
+              >
                 <el-icon style="margin-right: 4px"><DataAnalysis /></el-icon>
                 风险评估
               </el-button>
@@ -353,9 +368,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, UploadFilled, DataAnalysis } from '@element-plus/icons-vue'
+import { Plus, UploadFilled, DataAnalysis, View } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { createProject, getAllProjects, getProjectMembers, addProjectMember } from '@/api/project'
+import { createProject, getAllProjects, getProjectMembers, addProjectMember, getAssessmentByProjectId } from '@/api/project'
 import { getAllEnterprises } from '@/api/enterprise'
 import { getUserByEmail } from '@/api/user'
 import { uploadFileWithChunks, confirmFileUpload, deleteUploadFile, type UploadProgressInfo } from '@/api/fileUpload'
@@ -392,6 +407,7 @@ const addingMember = ref(false)
 const detailDialogVisible = ref(false)
 const uploadDrawerVisible = ref(false)
 const fileInputRef = ref<HTMLInputElement>()
+const viewingReportProjectId = ref<number | null>(null)
 
 // 文件上传相关状态
 interface UploadFile {
@@ -707,6 +723,29 @@ const formatDate = (dateStr: string) => {
 const viewDetail = (project: Project) => {
   currentProject.value = project
   detailDialogVisible.value = true
+}
+
+// 查看评估报告
+const viewReport = async (project: Project) => {
+  viewingReportProjectId.value = project.id
+  try {
+    const res = await getAssessmentByProjectId(project.id)
+    if (res.code === 200 && res.data && res.data.id) {
+      router.push({
+        path: '/assessment-result',
+        query: {
+          assessmentId: res.data.id.toString()
+        }
+      })
+    } else {
+      ElMessage.warning('未找到该项目的评估记录')
+    }
+  } catch (error) {
+    console.error('获取评估记录失败', error)
+    ElMessage.error('获取评估记录失败')
+  } finally {
+    viewingReportProjectId.value = null
+  }
 }
 
 // 打开上传文件抽屉

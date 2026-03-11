@@ -124,6 +124,19 @@ export interface ProjectMemberResponse {
   }
 }
 
+// 评估记录
+export interface Assessment {
+  id: number
+  projectId: number
+  assessmentDate: string | null
+  overallScore: number | null
+  overallRiskLevel: string | null
+  details: string | null
+  recommendations: string | null
+  status: string
+  createdAt: string
+}
+
 // 枚举选项类型
 export interface OptionItem {
   label: string
