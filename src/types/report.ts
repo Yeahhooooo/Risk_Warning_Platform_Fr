@@ -108,6 +108,7 @@ export interface RiskVO {
   relatedIndicators: RelatedIndicator[]
   relatedRegulations: RelatedRegulation[]
   createAt: string
+  processingStatus?: string
 }
 
 /**

@@ -62,9 +62,17 @@
                   {{ getRiskLevelLabel(risk.riskLevel) }}
                 </el-tag>
                 <span class="risk-name">{{ risk.name }}</span>
-                <el-tag size="small" type="info" style="margin-left: auto; margin-right: 10px;">
-                  {{ risk.dimension }}
-                </el-tag>
+                <div class="risk-meta">
+                  <el-tag size="small" type="info">
+                    {{ risk.dimension }}
+                  </el-tag>
+                  <el-tag size="small" type="warning">
+                    {{ formatDate(risk.createAt) }}
+                  </el-tag>
+                  <el-tag size="small" :type="getProcessingStatusType(risk.processingStatus)">
+                    {{ risk.processingStatus || '-' }}
+                  </el-tag>
+                </div>
               </div>
             </template>
 
@@ -239,6 +247,26 @@ const getStatusLabel = (status: string) => {
   return labelMap[status] || status
 }
 
+// 处理状态标签类型
+const getProcessingStatusType = (status?: string) => {
+  const typeMap: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
+    '成功': 'success',
+    '处理中': 'warning',
+    '失败': 'danger'
+  }
+  return status ? (typeMap[status] || 'info') : 'info'
+}
+
+// 时间格式化
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return '-'
+
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return dateStr
+
+  return date.toLocaleString('zh-CN')
+}
+
 // 进度条颜色
 const getProgressColor = (value: number) => {
   if (value >= 0.8) return '#f56c6c'
@@ -355,6 +383,15 @@ const handleExport = () => {
   font-size: 14px;
   font-weight: 500;
   color: #303133;
+}
+
+.risk-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .risk-detail {
