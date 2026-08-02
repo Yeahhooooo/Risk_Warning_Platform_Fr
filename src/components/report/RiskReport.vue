@@ -46,6 +46,13 @@
 
       <!-- 风险列表 -->
       <div class="risk-list" v-if="risks.length > 0">
+        <div class="risk-table-header">
+          <span>风险等级</span>
+          <span>风险点及触发依据</span>
+          <span>风险类别</span>
+          <span>处理状态</span>
+          <span>预警时间</span>
+        </div>
         <el-collapse accordion>
           <el-collapse-item
             v-for="(risk, index) in risks"
@@ -61,18 +68,14 @@
                 >
                   {{ getRiskLevelLabel(risk.riskLevel) }}
                 </el-tag>
-                <span class="risk-name">{{ risk.name }}</span>
-                <div class="risk-meta">
-                  <el-tag size="small" type="info">
-                    {{ risk.dimension }}
-                  </el-tag>
-                  <el-tag size="small" type="warning">
-                    {{ formatDate(risk.createAt) }}
-                  </el-tag>
+                <span class="risk-name">{{ risk.name || '-' }}</span>
+                <span class="risk-dimension">{{ risk.dimension || '-' }}</span>
+                <span class="risk-status">
                   <el-tag size="small" :type="getProcessingStatusType(risk.processingStatus)">
                     {{ risk.processingStatus || '-' }}
                   </el-tag>
-                </div>
+                </span>
+                <span class="risk-time">{{ formatDate(risk.createAt) }}</span>
               </div>
             </template>
 
@@ -366,8 +369,23 @@ const handleExport = () => {
   margin-top: 20px;
 }
 
+.risk-table-header {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 2.5fr) minmax(140px, 1fr) 120px 160px;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  background: #f5f7fa;
+  color: #606266;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .risk-title {
-  display: flex;
+  display: grid;
+  grid-template-columns: 120px minmax(0, 2.5fr) minmax(140px, 1fr) 120px 160px;
+  gap: 12px;
   align-items: center;
   width: 100%;
 }
@@ -379,19 +397,26 @@ const handleExport = () => {
 }
 
 .risk-name {
-  margin-left: 12px;
   font-size: 14px;
   font-weight: 500;
   color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.risk-meta {
+.risk-dimension,
+.risk-time {
+  font-size: 13px;
+  color: #606266;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.risk-status {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-left: auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .risk-detail {
