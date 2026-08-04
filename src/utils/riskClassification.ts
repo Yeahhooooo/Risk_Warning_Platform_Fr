@@ -42,6 +42,16 @@ export function normalizeDimension(dimension?: unknown): string {
   return String(dimension).trim()
 }
 
+const dimensionLabelMap: Record<string, string> = {
+  '企业国际合作风险': '国际化经营风险'
+}
+
+export function getDimensionLabel(dimension?: unknown): string {
+  const normalizedDimension = normalizeDimension(dimension)
+  if (!normalizedDimension) return '-'
+  return dimensionLabelMap[normalizedDimension] || normalizedDimension
+}
+
 export function filterRisks(risks: RiskVO[], dimension?: string, riskLevel?: string): RiskVO[] {
   const dim = normalizeDimension(dimension)
   const lvl = normalizeRiskLevel(riskLevel)

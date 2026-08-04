@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <h3>
-            {{ selectedDimension ? selectedDimension : '全部维度' }} - 风险清单
+            {{ selectedDimension ? getDimensionLabel(selectedDimension) : '全部维度' }} - 风险清单
           </h3>
           <div class="header-actions">
             <el-select
@@ -69,7 +69,7 @@
                   {{ getRiskLevelLabel(risk.riskLevel) }}
                 </el-tag>
                 <span class="risk-name">{{ risk.name || '-' }}</span>
-                <span class="risk-dimension">{{ risk.dimension || '-' }}</span>
+                <span class="risk-dimension">{{ getDimensionLabel(risk.dimension) }}</span>
                 <span class="risk-status">
                   <el-tag size="small" :type="getProcessingStatusType(risk.processingStatus)">
                     {{ risk.processingStatus || '-' }}
@@ -86,7 +86,7 @@
                   {{ risk.description || '-' }}
                 </el-descriptions-item>
                 <el-descriptions-item label="风险维度">
-                  {{ risk.dimension }}
+                  {{ getDimensionLabel(risk.dimension) }}
                 </el-descriptions-item>
                 <el-descriptions-item label="风险等级">
                   <el-tag :type="getRiskLevelType(risk.riskLevel)" effect="dark">
@@ -190,6 +190,7 @@ import { ElMessage } from 'element-plus'
 import type { RiskVO } from '@/types/report'
 import {
   normalizeRiskLevel,
+  getDimensionLabel,
   getRiskLevelLabel as getRiskLevelLabelUtil,
   getRiskLevelTagType as getRiskLevelTagTypeUtil
 } from '@/utils/riskClassification'

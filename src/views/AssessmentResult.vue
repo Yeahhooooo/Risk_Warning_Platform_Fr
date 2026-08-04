@@ -61,7 +61,7 @@
               :key="dim"
               :index="dim"
             >
-              <span>{{ dim }}</span>
+              <span>{{ getDimensionLabel(dim) }}</span>
               <el-badge
                 v-if="getDimensionRiskCount(dim) > 0"
                 :value="getDimensionRiskCount(dim)"
@@ -120,6 +120,7 @@ import {
   filterRisks,
   normalizeDimension,
   normalizeRiskLevel,
+  getDimensionLabel,
   getDimensionBadgeType as getDimensionBadgeTypeUtil
 } from '@/utils/riskClassification'
 
