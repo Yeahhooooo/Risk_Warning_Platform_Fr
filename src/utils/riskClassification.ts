@@ -43,7 +43,9 @@ export function normalizeDimension(dimension?: unknown): string {
 }
 
 const dimensionLabelMap: Record<string, string> = {
-  '企业国际合作风险': '国际化经营风险'
+  '企业国际合作风险': '国际化经营风险',
+  '产品合规风险': '产品法律风险',
+  '劳务合规风险': '劳动法律风险'
 }
 
 export function getDimensionLabel(dimension?: unknown): string {
