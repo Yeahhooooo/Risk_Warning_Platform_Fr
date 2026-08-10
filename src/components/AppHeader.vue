@@ -1,7 +1,7 @@
 <template>
   <el-header class="app-header">
     <div class="logo">
-      <h1>风险合规预警系统</h1>
+      <h1>企业合规风险预警软件</h1>
     </div>
     <div class="nav-menu">
       <el-menu mode="horizontal" :default-active="activeMenu" router>
