@@ -2,7 +2,7 @@
   <div class="login-container">
     <div class="login-box">
       <div class="login-header">
-        <h1>风险合规预警系统</h1>
+        <h1>企业合规风险预警软件</h1>
         <p>Risk Warning Platform</p>
       </div>
 

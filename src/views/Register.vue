@@ -3,7 +3,7 @@
     <div class="register-box">
       <div class="register-header">
         <h1>创建账号</h1>
-        <p>加入风险合规预警系统</p>
+        <p>加入企业合规风险预警软件</p>
       </div>
 
       <el-form
