@@ -5,18 +5,9 @@
       <el-col :span="24">
         <el-card class="result-card" shadow="hover">
           <template #header>
-            <div class="card-header">
-              <h3>总体评估结果</h3>
-              <el-tag :type="getStatusType(data?.overallResult?.status)" size="large">
-                {{ getStatusLabel(data?.overallResult?.status) }}
-              </el-tag>
-            </div>
+            <h3>总体评估结果</h3>
           </template>
           <div class="overall-result">
-            <div class="score-section">
-              <div class="score-label">综合得分</div>
-              <div class="score-value">{{ data?.overallResult?.overallScore?.toFixed(2) || 0 }}</div>
-            </div>
             <div class="risk-level-section">
               <div class="risk-label">风险等级</div>
               <el-tag
@@ -218,33 +209,24 @@ const getRiskLevelLabel = (level?: string) => {
 
 .overall-result {
   display: flex;
-  justify-content: space-around;
+  justify-content: center;
   align-items: center;
   padding: 20px 0;
 }
 
-.score-section,
 .risk-level-section {
   text-align: center;
 }
 
-.score-label,
 .risk-label {
-  font-size: 14px;
+  font-size: 18px;
   color: #909399;
-  margin-bottom: 12px;
-}
-
-.score-value {
-  font-size: 48px;
-  font-weight: bold;
-  color: #409eff;
-  font-family: 'Arial', sans-serif;
+  margin-bottom: 16px;
 }
 
 .risk-tag {
-  font-size: 18px;
-  padding: 10px 20px;
+  font-size: 24px;
+  padding: 15px 30px;
   font-weight: bold;
 }
 
