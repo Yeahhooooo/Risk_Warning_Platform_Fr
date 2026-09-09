@@ -44,8 +44,11 @@ const getWebSocketUrl = (): string => {
   if (import.meta.env.VITE_WEBSOCKET_URL) {
     return import.meta.env.VITE_WEBSOCKET_URL
   }
-  // 默认使用本地开发地址
-  return 'ws://localhost:9090/ws'
+  // 默认与页面同源，走 Vite 代理（见 vite.config.ts 的 /ws 配置）。
+  // 这样浏览器连接的是它加载页面时使用的 host（如服务器 IP），无需写死地址，
+  // 由代理转发到后端真正的 WebSocket 服务，也自动兼容 http/https。
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${window.location.host}/ws`
 }
 
 const DEFAULT_CONFIG: WebSocketConfig = {
