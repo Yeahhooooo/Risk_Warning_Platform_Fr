@@ -77,15 +77,28 @@ class WebSocketService {
    * @param userId 用户ID，用于绑定连接
    */
   connect(userId: number): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    if (this.userId === userId && this.ws &&
+        (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       console.log('WebSocket already connected')
       return
     }
 
+    this.stopHeartbeat()
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
+    const previous = this.ws
+    this.ws = null
+    previous?.close()
     this.userId = userId
     this.isManualClose = false
     this.reconnectAttempts = 0
 
+    this.openConnection()
+  }
+
+  private openConnection(): void {
     try {
       this.ws = new WebSocket(this.config.url)
       this.setupEventListeners()
@@ -99,9 +112,11 @@ class WebSocketService {
    * 设置事件监听器
    */
   private setupEventListeners(): void {
-    if (!this.ws) return
+    const socket = this.ws
+    if (!socket) return
 
-    this.ws.onopen = () => {
+    socket.onopen = () => {
+      if (this.ws !== socket) return
       console.log('WebSocket connected')
       this.reconnectAttempts = 0
 
@@ -114,7 +129,8 @@ class WebSocketService {
       this.startHeartbeat()
     }
 
-    this.ws.onmessage = (event: MessageEvent) => {
+    socket.onmessage = (event: MessageEvent) => {
+      if (this.ws !== socket) return
       try {
         const message: WebSocketMessage = JSON.parse(event.data)
         this.handleMessage(message)
@@ -123,7 +139,9 @@ class WebSocketService {
       }
     }
 
-    this.ws.onclose = (event: CloseEvent) => {
+    socket.onclose = (event: CloseEvent) => {
+      if (this.ws !== socket) return
+      this.ws = null
       console.log('WebSocket closed:', event.code, event.reason)
       this.stopHeartbeat()
 
@@ -132,7 +150,8 @@ class WebSocketService {
       }
     }
 
-    this.ws.onerror = (error: Event) => {
+    socket.onerror = (error: Event) => {
+      if (this.ws !== socket) return
       console.error('WebSocket error:', error)
     }
   }
@@ -281,6 +300,7 @@ class WebSocketService {
    * 安排重连
    */
   private scheduleReconnect(): void {
+    if (this.isManualClose || this.reconnectTimer !== null) return
     if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
       console.log('Max reconnect attempts reached')
       ElMessage.warning('实时通信连接失败，请刷新页面重试')
@@ -291,9 +311,10 @@ class WebSocketService {
     console.log(`Scheduling reconnect attempt ${this.reconnectAttempts}/${this.config.maxReconnectAttempts}`)
 
     this.reconnectTimer = window.setTimeout(() => {
-      if (this.userId) {
+      this.reconnectTimer = null
+      if (!this.isManualClose && this.userId !== null) {
         console.log('Attempting to reconnect...')
-        this.connect(this.userId)
+        this.openConnection()
       }
     }, this.config.reconnectInterval)
   }
@@ -340,8 +361,9 @@ class WebSocketService {
     }
 
     if (this.ws) {
-      this.ws.close()
+      const socket = this.ws
       this.ws = null
+      socket.close()
     }
 
     this.userId = null
