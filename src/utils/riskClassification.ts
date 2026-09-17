@@ -43,9 +43,17 @@ export function normalizeDimension(dimension?: unknown): string {
 }
 
 const dimensionLabelMap: Record<string, string> = {
+  // 中文别名归一
   '企业国际合作风险': '国际化经营风险',
   '产品合规风险': '产品法律风险',
-  '劳务合规风险': '劳动法律风险'
+  '劳务合规风险': '劳动法律风险',
+  // 后端英文枚举名 -> 中文（6 类风险）
+  'ENTERPRISE_RELATED_RISK': '企业关联方风险',
+  'PRODUCT_LEGITIMACY_RISK': '产品法律风险',
+  'LABOR_LEGITIMACY_RISK': '劳动法律风险',
+  'ENTERPRISE_CREDIT_RISK': '企业信用风险',
+  'ENTERPRISE_INTERNATIONAL_COOPERATION_RISK': '国际化经营风险',
+  'SUPPLY_CHAIN_RISK': '供应链风险'
 }
 
 export function getDimensionLabel(dimension?: unknown): string {

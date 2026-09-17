@@ -5,9 +5,9 @@
         <div class="card-header">
           <h3>指标分布统计</h3>
           <div class="header-stats">
-            <el-tag type="info">总计: {{ data?.totalCount || 0 }}</el-tag>
-            <el-tag type="danger" style="margin-left: 10px;">触发风险: {{ data?.riskTriggeredCount || 0 }}</el-tag>
-            <el-tag type="success" style="margin-left: 10px;">安全: {{ data?.safeCount || 0 }}</el-tag>
+            <el-tag type="info">命中指标数: {{ data?.totalCount || 0 }}</el-tag>
+            <el-tag type="danger" style="margin-left: 10px;">触发风险指标数: {{ data?.riskTriggeredCount || 0 }}</el-tag>
+            <el-tag type="success" style="margin-left: 10px;">未触发风险指标数: {{ data?.safeCount || 0 }}</el-tag>
           </div>
         </div>
       </template>
@@ -19,15 +19,31 @@
           <div class="stat-value">{{ data?.totalScore?.toFixed(2) || 0 }}</div>
         </div>
         <div class="stat-item">
-          <div class="stat-label">指标总数</div>
+          <div class="stat-label">命中指标数</div>
           <div class="stat-value">{{ data?.totalCount || 0 }}</div>
         </div>
         <div class="stat-item">
-          <div class="stat-label">触发风险数</div>
+          <div class="stat-label">
+            触发风险指标数
+            <el-tooltip
+              content="在现有阈值下，命中指标里触发风险的指标数"
+              placement="top"
+            >
+              <el-icon class="stat-help-icon"><QuestionFilled /></el-icon>
+            </el-tooltip>
+          </div>
           <div class="stat-value risk-triggered">{{ data?.riskTriggeredCount || 0 }}</div>
         </div>
         <div class="stat-item">
-          <div class="stat-label">安全指标数</div>
+          <div class="stat-label">
+            未触发风险指标数
+            <el-tooltip
+              content="在现有阈值下，命中指标里未触发风险的指标数"
+              placement="top"
+            >
+              <el-icon class="stat-help-icon"><QuestionFilled /></el-icon>
+            </el-tooltip>
+          </div>
           <div class="stat-value safe">{{ data?.safeCount || 0 }}</div>
         </div>
       </div>
@@ -45,18 +61,18 @@
               {{ (row.startScoreRatio * 100).toFixed(0) }}% - {{ (row.endScoreRatio * 100).toFixed(0) }}%
             </template>
           </el-table-column>
-          <el-table-column prop="totalCount" label="指标数量" width="120" align="center" />
+          <el-table-column prop="totalCount" label="命中指标数" width="120" align="center" />
           <el-table-column prop="totalScore" label="总分" width="120" align="center">
             <template #default="{ row }">
               {{ row.totalScore.toFixed(2) }}
             </template>
           </el-table-column>
-          <el-table-column prop="riskTriggeredCount" label="触发风险" width="120" align="center">
+          <el-table-column prop="riskTriggeredCount" label="触发风险指标数" width="140" align="center">
             <template #default="{ row }">
               <span class="risk-count">{{ row.riskTriggeredCount }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="safeCount" label="安全指标" width="120" align="center">
+          <el-table-column prop="safeCount" label="未触发风险指标数" width="150" align="center">
             <template #default="{ row }">
               <span class="safe-count">{{ row.safeCount }}</span>
             </template>
@@ -80,7 +96,7 @@
           >
             <template #title>
               <div class="dimension-title">
-                <span class="dimension-name">{{ dim.name }}</span>
+                <span class="dimension-name">{{ getDimensionLabel(dim.name) }}</span>
                 <div class="dimension-badges">
                   <el-badge :value="dim.data.totalCount" type="info" />
                   <el-badge
@@ -144,7 +160,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import type { IndicatorDistributionVO } from '@/types/report'
+import { getDimensionLabel } from '@/utils/riskClassification'
 
 interface Props {
   data: IndicatorDistributionVO | null
@@ -190,6 +208,14 @@ const calculateRatio = (count: number): string => {
 .header-stats {
   display: flex;
   align-items: center;
+}
+
+.stat-help-icon {
+  margin-left: 4px;
+  color: #909399;
+  cursor: help;
+  font-size: 14px;
+  vertical-align: middle;
 }
 
 .report-card {

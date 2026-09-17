@@ -26,7 +26,7 @@
 
     <el-row :gutter="20" style="margin-top: 20px;">
       <!-- 风险汇总 -->
-      <el-col :span="12">
+      <el-col :span="24">
         <el-card class="summary-card" shadow="hover">
           <template #header>
             <h3>风险汇总</h3>
@@ -47,33 +47,6 @@
             <div class="summary-item low-risk">
               <span class="label">低风险</span>
               <span class="value">{{ data?.riskSummary?.lowRiskCount || 0 }}</span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- 指标概览 -->
-      <el-col :span="12">
-        <el-card class="summary-card" shadow="hover">
-          <template #header>
-            <h3>指标概览</h3>
-          </template>
-          <div class="summary-content">
-            <div class="summary-item">
-              <span class="label">行为指标</span>
-              <span class="value">{{ data?.indicatorOverview?.behaviorIndicators || 0 }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="label">问卷指标</span>
-              <span class="value">{{ data?.indicatorOverview?.questionnaireIndicators || 0 }}</span>
-            </div>
-            <div class="summary-item risk-triggered">
-              <span class="label">触发风险</span>
-              <span class="value">{{ data?.indicatorOverview?.riskTriggeredIndicators || 0 }}</span>
-            </div>
-            <div class="summary-item safe">
-              <span class="label">安全指标</span>
-              <span class="value">{{ data?.indicatorOverview?.safeIndicators || 0 }}</span>
             </div>
           </div>
         </el-card>
@@ -119,6 +92,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { AssessmentDetailVO } from '@/types/report'
+import { getDimensionLabel } from '@/utils/riskClassification'
 
 interface Props {
   data: AssessmentDetailVO | null
@@ -131,7 +105,7 @@ const dimensionTableData = computed(() => {
   if (!props.data?.dimensionRiskDistribution) return []
 
   return Object.entries(props.data.dimensionRiskDistribution).map(([key, value]) => ({
-    dimension: value.dimension || key,
+    dimension: getDimensionLabel(value.dimension || key),
     riskCount: value.riskCount || 0,
     highRiskCount: value.highRiskCount || 0,
     mediumRiskCount: value.mediumRiskCount || 0,

@@ -139,9 +139,9 @@
               </el-descriptions>
 
               <!-- 相关指标 -->
-              <div class="related-section" v-if="risk.relatedIndicators && risk.relatedIndicators.length > 0">
+              <div class="related-section" v-if="dedupeIndicators(risk.relatedIndicators).length > 0">
                 <h4>相关指标</h4>
-                <el-table :data="risk.relatedIndicators" border size="small">
+                <el-table :data="dedupeIndicators(risk.relatedIndicators)" border size="small">
                   <el-table-column prop="indicatorName" label="指标名称" min-width="200" />
                   <el-table-column prop="score" label="得分" width="100" align="center">
                     <template #default="{ row }">
@@ -187,7 +187,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { RiskVO } from '@/types/report'
+import type { RelatedIndicator, RiskVO } from '@/types/report'
 import {
   normalizeRiskLevel,
   getDimensionLabel,
@@ -276,6 +276,21 @@ const getProgressColor = (value: number) => {
   if (value >= 0.8) return '#f56c6c'
   if (value >= 0.5) return '#e6a23c'
   return '#67c23a'
+}
+
+// 相关指标去重：同名指标只保留得分最高的一条
+const dedupeIndicators = (indicators?: RelatedIndicator[]): RelatedIndicator[] => {
+  if (!indicators || indicators.length === 0) return []
+
+  const map = new Map<string, RelatedIndicator>()
+  for (const item of indicators) {
+    const key = item.indicatorId || item.indicatorName
+    const existing = map.get(key)
+    if (!existing || (item.score ?? 0) > (existing.score ?? 0)) {
+      map.set(key, item)
+    }
+  }
+  return Array.from(map.values())
 }
 
 // 分数样式
