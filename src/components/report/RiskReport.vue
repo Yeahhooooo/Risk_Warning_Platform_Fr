@@ -372,7 +372,7 @@ const handleExport = () => {
 
 .risk-table-header {
   display: grid;
-  grid-template-columns: 120px minmax(0, 2.5fr) minmax(140px, 1fr) 120px 160px;
+  grid-template-columns: 96px minmax(0, 4fr) 120px 96px 150px;
   gap: 12px;
   padding: 12px 16px;
   margin-bottom: 12px;
@@ -383,12 +383,21 @@ const handleExport = () => {
   font-weight: 600;
 }
 
+.risk-list :deep(.el-collapse-item__header) {
+  height: auto;
+  min-height: 48px;
+  line-height: 1.5;
+  padding: 10px 0;
+  align-items: flex-start;
+}
+
 .risk-title {
   display: grid;
-  grid-template-columns: 120px minmax(0, 2.5fr) minmax(140px, 1fr) 120px 160px;
+  grid-template-columns: 96px minmax(0, 4fr) 120px 96px 150px;
   gap: 12px;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
+  padding-right: 8px;
 }
 
 .risk-tag {
@@ -401,9 +410,10 @@ const handleExport = () => {
   font-size: 14px;
   font-weight: 500;
   color: #303133;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .risk-dimension,
