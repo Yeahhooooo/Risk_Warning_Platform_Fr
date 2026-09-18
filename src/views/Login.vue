@@ -70,8 +70,8 @@ const loginFormRef = ref<FormInstance>()
 const loading = ref(false)
 
 const loginForm = reactive<LoginRequest>({
-  email: '',
-  password: ''
+  email: '1@qq.com',
+  password: '123456'
 })
 
 const loginRules = {
