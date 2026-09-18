@@ -65,6 +65,27 @@ export interface IndicatorDistributionVO {
 }
 
 /**
+ * 相关法规
+ */
+export interface RelatedRegulation {
+  regulationId: string
+  regulationName: string
+  violationType: string
+  complianceRequirement: string
+}
+
+/**
+ * 相关企业行为
+ * 对应后端 RelatedBehavior
+ */
+export interface RelatedBehavior {
+  behaviorId?: string
+  projectId?: number
+  description: string
+  relatedRegulations?: RelatedRegulation[]
+}
+
+/**
  * 相关指标
  */
 export interface RelatedIndicator {
@@ -73,16 +94,7 @@ export interface RelatedIndicator {
   score: number
   threshold: number
   isPrimaryTrigger: boolean
-}
-
-/**
- * 相关法规
- */
-export interface RelatedRegulation {
-  regulationId: string
-  regulationName: string
-  violationType: string
-  complianceRequirement: string
+  relatedBehaviors?: RelatedBehavior[]
 }
 
 /**

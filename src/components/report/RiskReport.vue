@@ -138,6 +138,20 @@
                 </el-descriptions-item>
               </el-descriptions>
 
+              <!-- 相关企业行为 -->
+              <div class="related-section" v-if="collectBehaviors(risk.relatedIndicators).length > 0">
+                <h4>相关企业行为</h4>
+                <ul class="behavior-list">
+                  <li
+                    v-for="(desc, i) in collectBehaviors(risk.relatedIndicators)"
+                    :key="i"
+                    class="behavior-item"
+                  >
+                    {{ desc }}
+                  </li>
+                </ul>
+              </div>
+
               <!-- 相关指标 -->
               <div class="related-section" v-if="dedupeIndicators(risk.relatedIndicators).length > 0">
                 <h4>相关指标</h4>
@@ -188,6 +202,7 @@
 import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { RelatedIndicator, RiskVO } from '@/types/report'
+
 import {
   normalizeRiskLevel,
   getDimensionLabel,
@@ -291,6 +306,24 @@ const dedupeIndicators = (indicators?: RelatedIndicator[]): RelatedIndicator[] =
     }
   }
   return Array.from(map.values())
+}
+
+// 收集触发该风险的企业行为描述：跨相关指标聚合、去重并去空
+const collectBehaviors = (indicators?: RelatedIndicator[]): string[] => {
+  if (!indicators || indicators.length === 0) return []
+
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const indicator of indicators) {
+    for (const behavior of indicator.relatedBehaviors ?? []) {
+      const desc = behavior.description?.trim()
+      if (desc && !seen.has(desc)) {
+        seen.add(desc)
+        result.push(desc)
+      }
+    }
+  }
+  return result
 }
 
 // 分数样式
@@ -459,6 +492,39 @@ const handleExport = () => {
   font-size: 14px;
   font-weight: 600;
   color: #303133;
+}
+
+.behavior-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.behavior-item {
+  position: relative;
+  padding: 8px 12px 8px 28px;
+  margin-bottom: 8px;
+  background: #fff;
+  border: 1px solid #ebeef5;
+  border-left: 3px solid #409eff;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #303133;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.behavior-item::before {
+  content: '•';
+  position: absolute;
+  left: 12px;
+  color: #409eff;
+  font-weight: bold;
+}
+
+.behavior-item:last-child {
+  margin-bottom: 0;
 }
 
 .score-low {
