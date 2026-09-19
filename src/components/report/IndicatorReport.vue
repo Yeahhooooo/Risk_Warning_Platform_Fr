@@ -28,6 +28,7 @@
             <el-tooltip
               content="在现有阈值下，命中指标里触发风险的指标数"
               placement="top"
+              :persistent="false"
             >
               <el-icon class="stat-help-icon"><QuestionFilled /></el-icon>
             </el-tooltip>
@@ -40,6 +41,7 @@
             <el-tooltip
               content="在现有阈值下，命中指标里未触发风险的指标数"
               placement="top"
+              :persistent="false"
             >
               <el-icon class="stat-help-icon"><QuestionFilled /></el-icon>
             </el-tooltip>
@@ -58,13 +60,13 @@
         >
           <el-table-column label="分数区间" width="150" align="center">
             <template #default="{ row }">
-              {{ (row.startScoreRatio * 100).toFixed(0) }}% - {{ (row.endScoreRatio * 100).toFixed(0) }}%
+              {{ ((row.startScoreRatio ?? 0) * 100).toFixed(0) }}% - {{ ((row.endScoreRatio ?? 0) * 100).toFixed(0) }}%
             </template>
           </el-table-column>
           <el-table-column prop="totalCount" label="命中指标数" width="120" align="center" />
           <el-table-column prop="totalScore" label="总分" width="120" align="center">
             <template #default="{ row }">
-              {{ row.totalScore.toFixed(2) }}
+              {{ (row.totalScore ?? 0).toFixed(2) }}
             </template>
           </el-table-column>
           <el-table-column prop="riskTriggeredCount" label="触发风险指标数" width="140" align="center">
@@ -112,7 +114,7 @@
               <div class="dimension-stats">
                 <div class="stat-box">
                   <div class="stat-label">总分</div>
-                  <div class="stat-value">{{ dim.data.totalScore.toFixed(2) }}</div>
+                  <div class="stat-value">{{ (dim.data.totalScore ?? 0).toFixed(2) }}</div>
                 </div>
                 <div class="stat-box">
                   <div class="stat-label">指标数</div>
@@ -135,7 +137,7 @@
               >
                 <el-table-column label="分数区间" width="120" align="center">
                   <template #default="{ row }">
-                    {{ (row.startScoreRatio * 100).toFixed(0) }}%-{{ (row.endScoreRatio * 100).toFixed(0) }}%
+                    {{ ((row.startScoreRatio ?? 0) * 100).toFixed(0) }}%-{{ ((row.endScoreRatio ?? 0) * 100).toFixed(0) }}%
                   </template>
                 </el-table-column>
                 <el-table-column prop="totalCount" label="数量" width="80" align="center" />

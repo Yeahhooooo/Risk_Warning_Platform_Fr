@@ -76,17 +76,17 @@
       <!-- 主内容区 -->
       <el-main class="main-content">
         <!-- 总览视图 -->
-        <div v-if="activeView === 'overview'" v-loading="loadingOverview">
+        <div v-show="activeView === 'overview'" v-loading="loadingOverview">
           <OverviewReport :data="overviewData" />
         </div>
 
         <!-- 指标分布视图 -->
-        <div v-if="activeView === 'indicator'" v-loading="loadingIndicator">
+        <div v-show="activeView === 'indicator'" v-loading="loadingIndicator">
           <IndicatorReport :data="indicatorData" />
         </div>
 
         <!-- 风险清单视图 -->
-        <div v-if="activeView === 'risk'" v-loading="loadingRisks">
+        <div v-show="activeView === 'risk'" v-loading="loadingRisks">
           <RiskReport
             :risks="filteredRisks"
             :selected-dimension="selectedDimension"
