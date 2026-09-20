@@ -293,7 +293,7 @@
               <div v-if="!hasUploadingFiles && uploadFiles.length === 0" class="upload-placeholder">
                 <el-icon class="upload-icon"><UploadFilled /></el-icon>
                 <p>点击选择文件或拖拽文件到此处</p>
-                <p class="upload-hint">支持多文件上传，单个文件最大10MB</p>
+                <p class="upload-hint">支持多文件上传，最多 10 个文件，单个文件最大10MB</p>
               </div>
 
               <div v-if="uploadFiles.length > 0" class="file-list">
@@ -339,6 +339,7 @@
             </div>
 
             <div v-if="uploadFiles.length > 0" class="upload-controls">
+              <p class="upload-count-hint">已选择 {{ uploadFiles.length }} / {{ maxFileCount }} 个文件</p>
               <el-button type="primary" @click="confirmAllUploads" :disabled="hasUploadingFiles || !hasSuccessFiles" :loading="isConfirming">
                 {{ isConfirming ? '确认中...' : '确认上传所有文件' }}
               </el-button>
@@ -432,6 +433,7 @@ const uploadStats = reactive({
   failed: 0
 })
 const maxFileSize = 10 * 1024 * 1024 // 10MB
+const maxFileCount = 10 // 最多上传文件数量
 
 // 计算属性 - 是否有文件正在分片上传中
 const hasUploadingFiles = computed(() => {
@@ -809,7 +811,20 @@ const handleDragLeave = () => {
 
 // 添加文件
 const addFiles = (newFiles: File[]) => {
-  const validFiles = newFiles.filter(file => {
+  // 校验文件数量限制
+  const remaining = maxFileCount - uploadFiles.value.length
+  if (remaining <= 0) {
+    ElMessage.warning(`最多只能上传 ${maxFileCount} 个文件，请先移除部分文件`)
+    return
+  }
+
+  let selected = newFiles
+  if (newFiles.length > remaining) {
+    ElMessage.warning(`最多只能上传 ${maxFileCount} 个文件，本次仅添加前 ${remaining} 个`)
+    selected = newFiles.slice(0, remaining)
+  }
+
+  const validFiles = selected.filter(file => {
     if (file.size > maxFileSize) {
       ElMessage.error(`文件 ${file.name} 超过最大大小限制 ${formatFileSize(maxFileSize)}`)
       return false
@@ -1151,8 +1166,18 @@ onMounted(() => {
   .upload-controls {
     margin-top: 20px;
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 12px;
     justify-content: center;
+
+    .upload-count-hint {
+      margin: 0;
+      width: 100%;
+      text-align: center;
+      font-size: 13px;
+      color: #909399;
+    }
   }
 
   .upload-stats {

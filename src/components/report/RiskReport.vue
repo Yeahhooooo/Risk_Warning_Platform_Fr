@@ -51,7 +51,6 @@
           <span>风险点及触发依据</span>
           <span>风险类别</span>
           <span>处理状态</span>
-          <span>预警时间</span>
         </div>
         <el-collapse accordion>
           <el-collapse-item
@@ -75,7 +74,6 @@
                     {{ risk.processingStatus || '-' }}
                   </el-tag>
                 </span>
-                <span class="risk-time">{{ formatDate(risk.createAt) }}</span>
               </div>
             </template>
 
@@ -113,18 +111,46 @@
               <div class="related-section" v-if="dedupeIndicators(risk.relatedIndicators).length > 0">
                 <h4>相关指标</h4>
                 <el-table :data="dedupeIndicators(risk.relatedIndicators)" border size="small">
-                  <el-table-column prop="indicatorName" label="指标名称" min-width="200" />
-                  <el-table-column prop="score" label="得分" width="100" align="center">
+                  <el-table-column label="指标名称 / 所属层级" min-width="320">
                     <template #default="{ row }">
-                      <span :class="getScoreClass(row.score, row.threshold)">
-                        {{ row.score }}
+                      <div class="indicator-cell">
+                        <span class="indicator-label">{{ row.indicatorName || '-' }}</span>
+                        <span
+                          v-if="pathSegments(risk, row).length > 0"
+                          class="indicator-path"
+                        >
+                          <template
+                            v-for="(seg, i) in pathSegments(risk, row)"
+                            :key="i"
+                          >
+                            <span
+                              class="path-seg"
+                              :class="{ 'is-leaf': i === pathSegments(risk, row).length - 1 }"
+                            >{{ seg }}</span>
+                            <span
+                              v-if="i < pathSegments(risk, row).length - 1"
+                              class="path-sep"
+                            >&gt;</span>
+                          </template>
+                        </span>
+                      </div>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="得分" width="100" align="center">
+                    <template #default="{ row }">
+                      <span :class="getScoreClass(row.score, row.maxScore, row.threshold)">
+                        {{ formatScore(row.score) }}
                       </span>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="threshold" label="阈值" width="100" align="center" />
+                  <el-table-column label="满分" width="90" align="center">
+                    <template #default="{ row }">
+                      {{ row.maxScore != null ? formatScore(row.maxScore) : (row.threshold != null ? formatScore(row.threshold) : '-') }}
+                    </template>
+                  </el-table-column>
                   <el-table-column label="主要触发" width="100" align="center">
                     <template #default="{ row }">
-                      <el-tag v-if="row.isPrimaryTrigger" type="danger" size="small">是</el-tag>
+                      <el-tag v-if="isPrimaryTrigger(row)" type="danger" size="small">是</el-tag>
                       <el-tag v-else type="info" size="small">否</el-tag>
                     </template>
                   </el-table-column>
@@ -132,9 +158,9 @@
               </div>
 
               <!-- 相关法规 -->
-              <div class="related-section" v-if="risk.relatedRegulations && risk.relatedRegulations.length > 0">
+              <div class="related-section" v-if="collectRegulations(risk).length > 0">
                 <h4>相关法规</h4>
-                <el-table :data="risk.relatedRegulations" border size="small">
+                <el-table :data="collectRegulations(risk)" border size="small">
                   <el-table-column prop="regulationName" label="法规名称" min-width="200" />
                   <el-table-column prop="violationType" label="违规类型" width="120" />
                   <el-table-column prop="complianceRequirement" label="合规要求" min-width="250" />
@@ -158,7 +184,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { RelatedIndicator, RiskVO } from '@/types/report'
+import type { RelatedIndicator, RelatedRegulation, RiskVO } from '@/types/report'
 
 import {
   normalizeRiskLevel,
@@ -171,6 +197,11 @@ interface Props {
   risks: RiskVO[]
   selectedDimension?: string
   selectedRiskLevel?: string
+  /**
+   * 指标完整层级路径映射：indicatorId -> "产品法律风险 > 产品设计开发合规 > 产品标识与警示 > 产品标识管理制度"
+   * 来源为「指标分布」接口的 indicatorScores[].relatedIndicator
+   */
+  indicatorPaths?: Record<string, string>
 }
 
 const props = defineProps<Props>()
@@ -211,16 +242,6 @@ const getProcessingStatusType = (status?: string) => {
   return status ? (typeMap[status] || 'info') : 'info'
 }
 
-// 时间格式化
-const formatDate = (dateStr?: string) => {
-  if (!dateStr) return '-'
-
-  const date = new Date(dateStr)
-  if (Number.isNaN(date.getTime())) return dateStr
-
-  return date.toLocaleString('zh-CN')
-}
-
 // 相关指标去重：同名指标只保留得分最高的一条
 const dedupeIndicators = (indicators?: RelatedIndicator[]): RelatedIndicator[] => {
   if (!indicators || indicators.length === 0) return []
@@ -254,11 +275,80 @@ const collectBehaviors = (indicators?: RelatedIndicator[]): string[] => {
   return result
 }
 
-// 分数样式
-const getScoreClass = (score: number, threshold: number) => {
-  if (score < threshold) return 'score-low'
-  if (score < threshold * 1.2) return 'score-medium'
-  return 'score-high'
+// 收集相关法规：顶层 relatedRegulations 可能为 null，
+// 后端实际把法规挂在 relatedIndicators[].relatedBehaviors[].relatedRegulations 里
+const collectRegulations = (risk: RiskVO): RelatedRegulation[] => {
+  const seen = new Set<string>()
+  const result: RelatedRegulation[] = []
+
+  const push = (reg?: RelatedRegulation | null) => {
+    if (!reg) return
+    const key = reg.regulationId || `${reg.regulationName}|${reg.violationType}`
+    if (seen.has(key)) return
+    seen.add(key)
+    result.push(reg)
+  }
+
+  for (const reg of risk.relatedRegulations ?? []) push(reg)
+
+  for (const indicator of risk.relatedIndicators ?? []) {
+    for (const behavior of indicator.relatedBehaviors ?? []) {
+      for (const reg of behavior.relatedRegulations ?? []) push(reg)
+    }
+  }
+
+  return result
+}
+
+// 解析单个指标的完整层级路径
+const resolveIndicatorPath = (risk: RiskVO, indicator: RelatedIndicator): string => {
+  // 1) 优先用「指标分布」接口按 indicatorId 匹配到的路径
+  const fromMap = indicator.indicatorId ? props.indicatorPaths?.[indicator.indicatorId] : ''
+  if (fromMap) return fromMap
+
+  // 2) 指标本身若带路径则直接用
+  if (indicator.relatedIndicator) return indicator.relatedIndicator
+
+  // 3) 兜底：该风险只关联一个指标时，用风险顶层的 relatedIndicator 路径
+  const indicators = dedupeIndicators(risk.relatedIndicators)
+  if (indicators.length === 1 && risk.relatedIndicator) return risk.relatedIndicator
+
+  return ''
+}
+
+// 路径拆分为层级片段，用于面包屑展示
+const pathSegments = (risk: RiskVO, indicator: RelatedIndicator): string[] => {
+  const path = resolveIndicatorPath(risk, indicator)
+  if (!path) return []
+  return path
+    .split('>')
+    .map(seg => seg.trim())
+    .filter(Boolean)
+}
+
+// 是否主要触发（兼容后端 primaryTrigger 与旧字段 isPrimaryTrigger）
+const isPrimaryTrigger = (indicator: RelatedIndicator): boolean => {
+  return Boolean(indicator.primaryTrigger ?? indicator.isPrimaryTrigger)
+}
+
+// 得分格式化（保留两位小数，整数则去掉小数位）
+const formatScore = (score?: number | null): string => {
+  if (score == null || Number.isNaN(Number(score))) return '-'
+  const num = Number(score)
+  return Number.isInteger(num) ? String(num) : num.toFixed(2)
+}
+
+// 分数样式：分数越低代表合规水平越差、风险越高
+const getScoreClass = (score?: number | null, maxScore?: number | null, threshold?: number | null) => {
+  if (score == null || Number.isNaN(Number(score))) return ''
+
+  const base = maxScore ?? threshold
+  if (!base || base <= 0) return ''
+
+  const ratio = Number(score) / Number(base)
+  if (ratio < 0.2) return 'score-danger'
+  if (ratio < 0.4) return 'score-warning'
+  return 'score-safe'
 }
 
 // 导出报告
@@ -348,7 +438,7 @@ const handleExport = () => {
 
 .risk-table-header {
   display: grid;
-  grid-template-columns: 96px minmax(0, 4fr) 120px 96px 150px;
+  grid-template-columns: 96px minmax(0, 4fr) 120px 96px;
   gap: 12px;
   padding: 12px 16px;
   margin-bottom: 12px;
@@ -369,7 +459,7 @@ const handleExport = () => {
 
 .risk-title {
   display: grid;
-  grid-template-columns: 96px minmax(0, 4fr) 120px 96px 150px;
+  grid-template-columns: 96px minmax(0, 4fr) 120px 96px;
   gap: 12px;
   align-items: flex-start;
   width: 100%;
@@ -392,8 +482,7 @@ const handleExport = () => {
   word-break: break-word;
 }
 
-.risk-dimension,
-.risk-time {
+.risk-dimension {
   font-size: 13px;
   color: #606266;
   overflow: hidden;
@@ -455,17 +544,58 @@ const handleExport = () => {
   margin-bottom: 0;
 }
 
-.score-low {
+.indicator-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.indicator-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303133;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.indicator-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #909399;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.path-seg {
+  color: #909399;
+}
+
+.path-seg.is-leaf {
+  color: #409eff;
+  font-weight: 600;
+}
+
+.path-sep {
+  color: #c0c4cc;
+}
+
+.score-danger {
   color: #f56c6c;
   font-weight: bold;
 }
 
-.score-medium {
+.score-warning {
   color: #e6a23c;
   font-weight: bold;
 }
 
-.score-high {
+.score-safe {
   color: #67c23a;
   font-weight: bold;
 }

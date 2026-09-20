@@ -91,6 +91,7 @@
             :risks="filteredRisks"
             :selected-dimension="selectedDimension"
             :selected-risk-level="selectedRiskLevel"
+            :indicator-paths="indicatorPathMap"
             @update:risk-level="selectedRiskLevel = $event"
           />
         </div>
@@ -161,6 +162,17 @@ const availableDimensions = computed(() => {
 
 // 总风险数
 const totalRisks = computed(() => risksData.value.length)
+
+// 指标完整层级路径映射：indicatorId -> relatedIndicator（供风险清单展示「所属层级」）
+const indicatorPathMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const item of indicatorData.value?.indicatorScores ?? []) {
+    if (item.indicatorId && item.relatedIndicator) {
+      map[item.indicatorId] = item.relatedIndicator
+    }
+  }
+  return map
+})
 
 // 筛选后的风险列表
 const filteredRisks = computed(() => {
@@ -283,8 +295,9 @@ const handleNotificationMessage = (message: NotificationMessage) => {
 
       ElMessage.success('评估完成，正在加载结果...')
 
-      // 加载数据
+      // 加载数据（指标分布用于补齐风险清单里的指标层级路径）
       loadOverviewData()
+      loadIndicatorData()
     }
   }
 }
@@ -297,6 +310,8 @@ onMounted(() => {
   } else if (assessmentId.value) {
     // 非等待模式且有assessmentId，直接加载数据
     loadOverviewData()
+    // 指标分布同时在后台加载：风险清单里的指标层级路径依赖它
+    loadIndicatorData()
   }
 })
 

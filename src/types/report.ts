@@ -56,12 +56,33 @@ export interface IndicatorDistributionVO {
   riskDimensionEnum: RiskDimensionEnum | null
   assessmentId: number
   totalScore: number
+  maxScore?: number
+  /** 命中指标明细（含完整层级路径 relatedIndicator） */
+  indicatorScores?: IndicatorScoreVO[]
   totalCount: number
   riskTriggeredCount: number
   safeCount: number
   assessmentTime: string
   scoreDistributions: ScoreRatioDistributionItemVO[]
   dimensionDistributions: Record<string, IndicatorDistributionVO>
+}
+
+/**
+ * 命中指标明细
+ * 对应后端 IndicatorDistributionVO.indicatorScores
+ * 注意：此处的 relatedBehaviors 是字符串数组，与风险清单里的对象数组不同
+ */
+export interface IndicatorScoreVO {
+  indicatorId: string
+  indicatorName: string
+  dimension?: string
+  /** 指标完整层级路径，如「产品法律风险 > 产品设计开发合规 > 产品标识与警示 > 产品标识管理制度」 */
+  relatedIndicator?: string
+  relatedBehaviors?: string[]
+  score: number
+  maxScore?: number
+  riskLevel?: string
+  riskTriggered?: boolean
 }
 
 /**
@@ -87,13 +108,26 @@ export interface RelatedBehavior {
 
 /**
  * 相关指标
+ * 注意：后端实际字段为 maxScore（满分）与 primaryTrigger（是否主要触发），
+ * threshold / isPrimaryTrigger 为兼容旧数据保留为可选字段。
  */
 export interface RelatedIndicator {
   indicatorId: string
   indicatorName: string
   score: number
-  threshold: number
-  isPrimaryTrigger: boolean
+  /** 满分（后端字段） */
+  maxScore?: number
+  /** 风险阈值（部分接口返回，可能缺失） */
+  threshold?: number
+  /** 是否主要触发（后端字段） */
+  primaryTrigger?: boolean
+  /** 兼容旧字段名 */
+  isPrimaryTrigger?: boolean
+  /** 指标完整层级路径，如「产品法律风险 > 产品设计开发合规 > 产品标识与警示 > 产品标识管理制度」 */
+  relatedIndicator?: string
+  riskLevel?: string
+  riskTriggered?: boolean
+  dimension?: string
   relatedBehaviors?: RelatedBehavior[]
 }
 
@@ -109,6 +143,10 @@ export interface RiskVO {
   dimension: string
   description: string
   riskLevel: string
+  /** 风险得分 */
+  score?: number
+  /** 满分 */
+  maxScore?: number
   probability: number
   impact: number
   detectability: number
@@ -118,7 +156,10 @@ export interface RiskVO {
   impactScope: string
   countermeasures: string
   relatedIndicators: RelatedIndicator[]
-  relatedRegulations: RelatedRegulation[]
+  /** 该风险对应的指标完整层级路径（后端顶层字段，字符串） */
+  relatedIndicator?: string
+  /** 顶层相关法规，可能为 null，法规通常挂在 relatedBehaviors 里 */
+  relatedRegulations?: RelatedRegulation[] | null
   createAt: string
   processingStatus?: string
 }
