@@ -93,49 +93,6 @@
                     {{ getRiskLevelLabel(risk.riskLevel) }}
                   </el-tag>
                 </el-descriptions-item>
-                <el-descriptions-item label="发生概率">
-                  <el-progress
-                    :percentage="risk.probability * 100"
-                    :color="getProgressColor(risk.probability)"
-                  />
-                </el-descriptions-item>
-                <el-descriptions-item label="影响程度">
-                  <el-progress
-                    :percentage="risk.impact * 100"
-                    :color="getProgressColor(risk.impact)"
-                  />
-                </el-descriptions-item>
-                <el-descriptions-item label="可检测性">
-                  <el-progress
-                    :percentage="risk.detectability * 100"
-                    :color="getProgressColor(risk.detectability)"
-                  />
-                </el-descriptions-item>
-                <el-descriptions-item label="当前状态">
-                  <el-tag :type="getStatusType(risk.status)">
-                    {{ getStatusLabel(risk.status) }}
-                  </el-tag>
-                </el-descriptions-item>
-                <el-descriptions-item label="责任方">
-                  {{ risk.responsibleParty || '-' }}
-                </el-descriptions-item>
-                <el-descriptions-item label="影响范围" :span="2">
-                  {{ risk.impactScope || '-' }}
-                </el-descriptions-item>
-                <el-descriptions-item label="受影响对象" :span="2">
-                  <el-tag
-                    v-for="obj in risk.affectedObjects"
-                    :key="obj"
-                    size="small"
-                    style="margin-right: 8px;"
-                  >
-                    {{ obj }}
-                  </el-tag>
-                  <span v-if="!risk.affectedObjects || risk.affectedObjects.length === 0">-</span>
-                </el-descriptions-item>
-                <el-descriptions-item label="应对措施" :span="2">
-                  {{ risk.countermeasures || '-' }}
-                </el-descriptions-item>
               </el-descriptions>
 
               <!-- 相关企业行为 -->
@@ -244,28 +201,6 @@ const getRiskLevelLabel = (level: unknown) => {
   return getRiskLevelLabelUtil(level)
 }
 
-// 状态标签类型
-const getStatusType = (status: string) => {
-  const typeMap: Record<string, any> = {
-    'IDENTIFIED': 'info',
-    'IN_PROGRESS': 'warning',
-    'RESOLVED': 'success',
-    'MONITORING': 'primary'
-  }
-  return typeMap[status] || 'info'
-}
-
-// 状态标签文本
-const getStatusLabel = (status: string) => {
-  const labelMap: Record<string, string> = {
-    'IDENTIFIED': '已识别',
-    'IN_PROGRESS': '处理中',
-    'RESOLVED': '已解决',
-    'MONITORING': '监控中'
-  }
-  return labelMap[status] || status
-}
-
 // 处理状态标签类型
 const getProcessingStatusType = (status?: string) => {
   const typeMap: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
@@ -284,13 +219,6 @@ const formatDate = (dateStr?: string) => {
   if (Number.isNaN(date.getTime())) return dateStr
 
   return date.toLocaleString('zh-CN')
-}
-
-// 进度条颜色
-const getProgressColor = (value: number) => {
-  if (value >= 0.8) return '#f56c6c'
-  if (value >= 0.5) return '#e6a23c'
-  return '#67c23a'
 }
 
 // 相关指标去重：同名指标只保留得分最高的一条
