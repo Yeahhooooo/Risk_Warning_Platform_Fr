@@ -2,7 +2,7 @@
  * WebSocket 连接管理工具
  * 用于与后端建立实时通信连接
  */
-import { ElMessage, ElNotification } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import router from '@/router'
 
 // WebSocket 消息类型定义
@@ -196,28 +196,11 @@ class WebSocketService {
    * 处理通知消息
    */
   private handleNotification(notification: NotificationMessage): void {
-    const { notificationType, title, content, assessmentId } = notification
+    const { notificationType, assessmentId } = notification
 
     // 检查当前是否在评估结果页面等待中
     const currentRoute = router.currentRoute.value
     const isOnWaitingPage = currentRoute.path === '/assessment-result' && currentRoute.query.waiting === 'true'
-
-    // 显示通知
-    ElNotification({
-      title: title || '系统通知',
-      message: content || '您有新的消息',
-      type: this.getNotificationType(notificationType),
-      duration: 5000,
-      onClick: () => {
-        // 点击通知跳转到评估结果页面
-        if (assessmentId && !isOnWaitingPage) {
-          router.push({
-            path: '/assessment-result',
-            query: { assessmentId: assessmentId.toString() }
-          })
-        }
-      }
-    })
 
     // 根据通知类型处理跳转
     if (notificationType === 'ASSESSMENT_COMPLETED' || notificationType === 'ASSESSMENT_COMPLETE' || notificationType === 'PROCESSING_COMPLETE') {
@@ -235,24 +218,6 @@ class WebSocketService {
     } else if (notificationType === 'PROCESSING_STARTED') {
       ElMessage.info('评估已开始，正在处理中...')
     }
-  }
-
-  /**
-   * 获取通知类型对应的 Element Plus 类型
-   */
-  private getNotificationType(notificationType: string): 'success' | 'warning' | 'info' | 'error' {
-    const typeMap: Record<string, 'success' | 'warning' | 'info' | 'error'> = {
-      'ASSESSMENT_COMPLETED': 'success',
-      'ASSESSMENT_COMPLETE': 'success',
-      'PROCESSING_COMPLETE': 'success',
-      'PROCESSING_STARTED': 'info',
-      'RISK_WARNING': 'warning',
-      'SYSTEM_NOTIFICATION': 'info',
-      'QUESTIONNAIRE_REMINDER': 'info',
-      'ERROR': 'error',
-      'WARNING': 'warning'
-    }
-    return typeMap[notificationType] || 'info'
   }
 
   /**
