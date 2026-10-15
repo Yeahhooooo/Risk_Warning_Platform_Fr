@@ -87,7 +87,6 @@ export interface Project {
   id: number
   enterpriseId: number
   name: string
-  type: string
   status: string
   description: string
   startDate: string
@@ -103,7 +102,6 @@ export interface Project {
 export interface ProjectCreateRequest {
   enterpriseId: number
   name: string
-  type: string
   description?: string
   startDate?: string
   plannedCompletionDate?: string
@@ -142,12 +140,6 @@ export interface OptionItem {
   label: string
   value: string
 }
-
-// 项目类型选项
-export const projectTypeOptions: OptionItem[] = [
-  { label: '常规评估', value: 'REGULAR' },
-  { label: '专项评估', value: 'SPECIAL' }
-]
 
 // 行业选项
 export const industryOptions: OptionItem[] = [

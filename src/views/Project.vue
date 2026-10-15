@@ -15,11 +15,6 @@
         <!-- 项目列表 -->
         <el-table :data="projects" v-loading="loading" stripe style="width: 100%">
           <el-table-column prop="name" label="项目名称" min-width="180" />
-          <el-table-column prop="type" label="项目类型" width="120">
-            <template #default="{ row }">
-              {{ getProjectTypeLabel(row.type) }}
-            </template>
-          </el-table-column>
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
               <el-tag :type="getStatusType(row.status)">
@@ -86,16 +81,6 @@
             </el-form-item>
             <el-form-item label="项目名称" prop="name">
               <el-input v-model="projectForm.name" placeholder="请输入项目名称" />
-            </el-form-item>
-            <el-form-item label="项目类型" prop="type">
-              <el-select v-model="projectForm.type" placeholder="请选择项目类型" style="width: 100%">
-                <el-option
-                  v-for="item in projectTypeOptions"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </el-select>
             </el-form-item>
             <el-form-item label="项目描述">
               <el-input
@@ -254,7 +239,6 @@
         >
           <el-descriptions :column="2" border v-if="currentProject">
             <el-descriptions-item label="项目名称">{{ currentProject.name }}</el-descriptions-item>
-            <el-descriptions-item label="项目类型">{{ getProjectTypeLabel(currentProject.type) }}</el-descriptions-item>
             <el-descriptions-item label="项目状态">
               <el-tag :type="getStatusType(currentProject.status)">{{ getStatusLabel(currentProject.status) }}</el-tag>
             </el-descriptions-item>
@@ -376,7 +360,6 @@ import { getUserByEmail } from '@/api/user'
 import { uploadFileWithChunks, confirmFileUpload, deleteUploadFile, type UploadProgressInfo } from '@/api/fileUpload'
 import type { Project, ProjectCreateRequest, ProjectMemberResponse, Enterprise, AddMemberRequest, UserResponse } from '@/types'
 import {
-  projectTypeOptions,
   industryOptions,
   regionOptions,
   orientedUserOptions,
@@ -452,7 +435,6 @@ const hasSuccessFiles = computed(() => {
 const projectForm = reactive<ProjectCreateRequest>({
   enterpriseId: 0,
   name: '',
-  type: '',
   description: '',
   startDate: '',
   plannedCompletionDate: '',
@@ -468,9 +450,6 @@ const formRules: FormRules = {
   ],
   name: [
     { required: true, message: '请输入项目名称', trigger: 'blur' }
-  ],
-  type: [
-    { required: true, message: '请选择项目类型', trigger: 'change' }
   ],
   industry: [
     { required: true, message: '请选择所属行业', trigger: 'change' }
@@ -534,7 +513,6 @@ const resetForm = () => {
   Object.assign(projectForm, {
     enterpriseId: 0,
     name: '',
-    type: '',
     description: '',
     startDate: '',
     plannedCompletionDate: '',
@@ -576,12 +554,6 @@ const viewMembers = async (project: Project) => {
   } finally {
     membersLoading.value = false
   }
-}
-
-// 获取项目类型标签
-const getProjectTypeLabel = (type: string) => {
-  const item = projectTypeOptions.find(opt => opt.value === type)
-  return item?.label || type
 }
 
 // 获取行业标签
