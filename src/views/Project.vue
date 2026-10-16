@@ -24,10 +24,12 @@
           </el-table-column>
           <el-table-column prop="startDate" label="开始日期" width="120" />
           <el-table-column prop="plannedCompletionDate" label="计划完成日期" width="130" />
-          <el-table-column label="操作" width="320" fixed="right">
+          <el-table-column label="操作" width="420" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link @click="viewMembers(row)">查看成员</el-button>
               <el-button type="primary" link @click="viewDetail(row)">查看详情</el-button>
+              <el-button v-if="manageableProjectIds.has(row.id)" type="primary" link :disabled="busyProjectIds.has(row.id) || submitting || deletingId !== null" @click="showEditDialog(row)">编辑</el-button>
+              <el-button v-if="manageableProjectIds.has(row.id)" type="danger" link :loading="deletingId === row.id" :disabled="busyProjectIds.has(row.id) || submitting || deletingId !== null" @click="handleDelete(row)">删除</el-button>
               <el-button
                 v-if="row.status === 'COMPLETED'"
                 type="success"
@@ -54,9 +56,11 @@
         <!-- 创建项目对话框 -->
         <el-dialog
           v-model="createDialogVisible"
-          title="创建项目"
+          :title="editingProject ? '编辑项目' : '创建项目'"
           width="650px"
           :close-on-click-modal="false"
+          :show-close="!submitting"
+          :close-on-press-escape="!submitting"
         >
           <el-form
             ref="formRef"
@@ -70,6 +74,7 @@
                 placeholder="请选择所属企业"
                 style="width: 100%"
                 filterable
+                :disabled="!!editingProject"
               >
                 <el-option
                   v-for="item in enterprises"
@@ -81,6 +86,12 @@
             </el-form-item>
             <el-form-item label="项目名称" prop="name">
               <el-input v-model="projectForm.name" placeholder="请输入项目名称" />
+            </el-form-item>
+            <el-form-item label="评估类型">
+              <el-select v-model="projectForm.type" placeholder="请选择评估类型" style="width: 100%">
+                <el-option label="常规评估" value="REGULAR" />
+                <el-option label="专项评估" value="SPECIAL" />
+              </el-select>
             </el-form-item>
             <el-form-item label="项目描述">
               <el-input
@@ -129,25 +140,27 @@
                     placeholder="选择开始日期"
                     style="width: 100%"
                     value-format="YYYY-MM-DD"
+                    :clearable="!editingProject"
                   />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="计划完成日期">
+                <el-form-item label="计划完成日期" prop="plannedCompletionDate">
                   <el-date-picker
                     v-model="projectForm.plannedCompletionDate"
                     type="date"
                     placeholder="选择计划完成日期"
                     style="width: 100%"
                     value-format="YYYY-MM-DD"
+                    :clearable="!editingProject"
                   />
                 </el-form-item>
               </el-col>
             </el-row>
           </el-form>
           <template #footer>
-            <el-button @click="createDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="handleCreate" :loading="submitting">创建</el-button>
+            <el-button @click="createDialogVisible = false" :disabled="submitting">取消</el-button>
+            <el-button type="primary" @click="handleCreate" :loading="submitting">{{ editingProject ? '保存修改' : '创建' }}</el-button>
           </template>
         </el-dialog>
 
@@ -353,12 +366,13 @@
 import { ref, reactive, onMounted, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, UploadFilled, DataAnalysis, View } from '@element-plus/icons-vue'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { createProject, getAllProjects, getProjectMembers, addProjectMember, getAssessmentByProjectId } from '@/api/project'
-import { getAllEnterprises } from '@/api/enterprise'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { createProject, getAllProjects, getProjectMembers, addProjectMember, getAssessmentByProjectId, getProject, updateProject, deleteProject } from '@/api/project'
+import { getAllEnterprises, getEnterpriseMembers } from '@/api/enterprise'
+import { useUserStore } from '@/stores/user'
 import { getUserByEmail } from '@/api/user'
 import { uploadFileWithChunks, confirmFileUpload, deleteUploadFile, type UploadProgressInfo } from '@/api/fileUpload'
-import type { Project, ProjectCreateRequest, ProjectMemberResponse, Enterprise, AddMemberRequest, UserResponse } from '@/types'
+import type { Project, ProjectCreateRequest, ProjectUpdateRequest, ProjectMemberResponse, Enterprise, AddMemberRequest, UserResponse } from '@/types'
 import {
   industryOptions,
   regionOptions,
@@ -368,6 +382,12 @@ import {
 import AppHeader from '@/components/AppHeader.vue'
 
 const router = useRouter()
+const userStore = useUserStore()
+const manageableProjectIds = ref(new Set<number>())
+const busyProjectIds = ref(new Set<number>())
+const editingProject = ref<Project | null>(null)
+const formSnapshot = ref<ProjectCreateRequest | null>(null)
+const deletingId = ref<number | null>(null)
 
 // 状态
 const loading = ref(false)
@@ -402,9 +422,11 @@ interface UploadFile {
   status: 'waiting' | 'uploading' | 'success' | 'error'
   error: string | null
   uploadId: string | null
+  assessmentId: number | null
 }
 
 const uploadFiles = ref<UploadFile[]>([])
+const uploadAssessmentId = ref<number | null>(null)
 const isDragOver = ref(false)
 const isConfirming = ref(false)
 const isAssessing = ref(false)
@@ -434,6 +456,7 @@ const hasSuccessFiles = computed(() => {
 // 表单数据
 const projectForm = reactive<ProjectCreateRequest>({
   enterpriseId: 0,
+  type: undefined,
   name: '',
   description: '',
   startDate: '',
@@ -444,23 +467,27 @@ const projectForm = reactive<ProjectCreateRequest>({
 })
 
 // 表单验证规则
-const formRules: FormRules = {
+const formRules = computed<FormRules>(() => ({
   enterpriseId: [
     { required: true, message: '请选择所属企业', trigger: 'change' }
   ],
   name: [
-    { required: true, message: '请输入项目名称', trigger: 'blur' }
+    { required: true, whitespace: true, message: '请输入项目名称', trigger: 'blur' }
   ],
   industry: [
-    { required: true, message: '请选择所属行业', trigger: 'change' }
+    { required: !editingProject.value || !!formSnapshot.value?.industry, message: '请选择所属行业', trigger: 'change' }
   ],
   region: [
-    { required: true, message: '请选择所属区域', trigger: 'change' }
+    { required: !editingProject.value || !!formSnapshot.value?.region, message: '请选择所属区域', trigger: 'change' }
   ],
   orientedUser: [
-    { required: true, message: '请选择面向用户', trigger: 'change' }
-  ]
-}
+    { required: !editingProject.value || !!formSnapshot.value?.orientedUser, message: '请选择面向用户', trigger: 'change' }
+  ],
+  plannedCompletionDate: [{ validator: (_rule, value, callback) => {
+    if (value && projectForm.startDate && value < projectForm.startDate) callback(new Error('计划完成日期不能早于开始日期'))
+    else callback()
+  }, trigger: 'change' }]
+}))
 
 // 添加成员表单（email用于搜索，searchedUserId用于提交）
 const addMemberForm = reactive({
@@ -485,6 +512,30 @@ const fetchProjects = async () => {
   try {
     const res = await getAllProjects()
     projects.value = res.data || []
+    manageableProjectIds.value = new Set()
+    busyProjectIds.value = new Set()
+    if (userStore.user) {
+      const [projectPermissions, enterprisePermissions, assessments] = await Promise.all([
+        Promise.allSettled(projects.value.map(async project => {
+          const response = await getProjectMembers(project.id, true)
+          return response.data.some(member => member.user?.id === userStore.user?.id && member.role.toLowerCase() === 'project_admin') ? project.id : null
+        })),
+        Promise.allSettled([...new Set(projects.value.map(project => project.enterpriseId))].map(async id => {
+          const response = await getEnterpriseMembers(id, true)
+          return response.data.some(member => member.user?.id === userStore.user?.id && member.role.toLowerCase() === 'admin') ? id : null
+        })),
+        Promise.allSettled(projects.value.map(async project => {
+          const response = await getAssessmentByProjectId(project.id, true)
+          return response.data && ['UPLOADING', 'TO_BE_ASSESSED', 'ASSESSING'].includes(response.data.status) ? project.id : null
+        }))
+      ])
+      const enterpriseAdmins = new Set(enterprisePermissions.flatMap(result => result.status === 'fulfilled' && result.value !== null ? [result.value] : []))
+      manageableProjectIds.value = new Set([
+        ...projectPermissions.flatMap(result => result.status === 'fulfilled' && result.value !== null ? [result.value] : []),
+        ...projects.value.filter(project => enterpriseAdmins.has(project.enterpriseId)).map(project => project.id)
+      ])
+      busyProjectIds.value = new Set(assessments.flatMap(result => result.status === 'fulfilled' && result.value !== null ? [result.value] : []))
+    }
   } catch (error) {
     console.error('获取项目列表失败', error)
   } finally {
@@ -504,14 +555,58 @@ const fetchEnterprises = async () => {
 
 // 显示创建对话框
 const showCreateDialog = () => {
+  if (submitting.value) return
+  editingProject.value = null
+  formSnapshot.value = null
   resetForm()
   createDialogVisible.value = true
+}
+
+const showEditDialog = async (project: Project) => {
+  if (submitting.value || busyProjectIds.value.has(project.id)) return
+  submitting.value = true
+  try {
+    const response = await getProject(project.id)
+    resetForm()
+    const data = response.data
+    Object.assign(projectForm, {
+      enterpriseId: data.enterpriseId, name: data.name, type: data.type ?? undefined,
+      description: data.description ?? '', startDate: data.startDate ?? '', plannedCompletionDate: data.plannedCompletionDate ?? '',
+      industry: data.industry ?? '', region: data.region ?? '', orientedUser: data.orientedUser ?? ''
+    })
+    editingProject.value = data
+    formSnapshot.value = { ...projectForm }
+    createDialogVisible.value = true
+  } catch (error) { console.error('读取项目详情失败', error) }
+  finally { submitting.value = false }
+}
+
+const handleDelete = async (project: Project) => {
+  if (deletingId.value !== null || busyProjectIds.value.has(project.id)) return
+  deletingId.value = project.id
+  try {
+    await ElMessageBox.confirm(`确定删除项目“${project.name}”吗？项目成员关系、评估记录和关联结果也会删除，关联文件将在后台清理。此操作无法撤销。`, '删除项目', {
+      type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消', confirmButtonClass: 'el-button--danger'
+    })
+  } catch { deletingId.value = null; return }
+  try {
+    await deleteProject(project.id)
+    projects.value = projects.value.filter(item => item.id !== project.id)
+    if (currentProject.value?.id === project.id) {
+      detailDialogVisible.value = false; membersDialogVisible.value = false; addMemberDialogVisible.value = false
+      uploadDrawerVisible.value = false; resetUploadState(); currentProject.value = null; members.value = []
+    }
+    ElMessage.success('项目已删除，关联文件将在后台清理')
+    await fetchProjects()
+  } catch (error) { console.error('删除项目失败', error) }
+  finally { deletingId.value = null }
 }
 
 // 重置表单
 const resetForm = () => {
   Object.assign(projectForm, {
     enterpriseId: 0,
+    type: undefined,
     name: '',
     description: '',
     startDate: '',
@@ -525,15 +620,26 @@ const resetForm = () => {
 
 // 创建项目
 const handleCreate = async () => {
-  const valid = await formRef.value?.validate()
+  if (submitting.value) return
+  const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
   submitting.value = true
   try {
-    await createProject(projectForm)
-    ElMessage.success('项目创建成功')
+    if (editingProject.value) {
+      const changes = Object.fromEntries(Object.entries(projectForm).filter(([key, value]) =>
+        key !== 'enterpriseId' && value != null && value !== formSnapshot.value?.[key as keyof ProjectCreateRequest])) as ProjectUpdateRequest
+      if (Object.keys(changes).length === 0) { ElMessage.info('没有需要保存的修改'); return }
+      const response = await updateProject(editingProject.value.id, changes)
+      projects.value = projects.value.map(item => item.id === response.data.id ? response.data : item)
+      if (currentProject.value?.id === response.data.id) currentProject.value = response.data
+      ElMessage.success('项目修改成功')
+    } else {
+      await createProject(projectForm)
+      ElMessage.success('项目创建成功')
+    }
     createDialogVisible.value = false
-    fetchProjects()
+    await fetchProjects()
   } catch (error) {
     console.error('创建项目失败', error)
   } finally {
@@ -722,9 +828,9 @@ const viewReport = async (project: Project) => {
 
 // 打开上传文件抽屉
 const openUploadDrawer = (project: Project) => {
+  const keepCurrentUpload = currentProject.value?.id === project.id && uploadFiles.value.length > 0 && !isAssessing.value
   currentProject.value = project
-  // 打开上传抽屉前清空状态
-  resetUploadState()
+  if (!keepCurrentUpload) resetUploadState()
   uploadDrawerVisible.value = true
 }
 
@@ -732,6 +838,7 @@ const openUploadDrawer = (project: Project) => {
 
 // 重置上传状态
 const resetUploadState = () => {
+  uploadAssessmentId.value = null
   uploadFiles.value = []
   isDragOver.value = false
   isConfirming.value = false
@@ -797,17 +904,18 @@ const addFiles = (newFiles: File[]) => {
     progress: 0,
     status: 'waiting' as const,
     error: null,
-    uploadId: null
+    uploadId: null,
+    assessmentId: null
   }))
 
   uploadFiles.value.push(...fileObjects)
 
   // 立即开始上传每个新添加的文件
-  fileObjects.forEach(fileObj => {
-    // 使用 nextTick 确保 DOM 更新后再开始上传
-    nextTick(() => {
-      uploadFileChunksHandler(fileObj)
-    })
+  nextTick(async () => {
+    for (const fileObj of fileObjects) {
+      await uploadFileChunksHandler(fileObj)
+      if (uploadFiles.value.find(f => f.id === fileObj.id)?.status === 'error') break
+    }
   })
 }
 
@@ -829,6 +937,11 @@ const uploadFileChunksHandler = async (fileObj: UploadFile) => {
       projectId: currentProject.value.id,
       chunkSize: 1024 * 1024, // 1MB
       autoConfirm: false,
+      onInitialized: (upload) => {
+        uploadAssessmentId.value = upload.assessmentId
+        const item = uploadFiles.value.find(f => f.id === fileObj.id)
+        if (item) { item.assessmentId = upload.assessmentId; item.uploadId = upload.uploadId }
+      },
       onProgress: (progressInfo: UploadProgressInfo) => {
         // 通过索引访问确保响应式更新
         const idx = uploadFiles.value.findIndex(f => f.id === fileObj.id)
@@ -850,6 +963,7 @@ const uploadFileChunksHandler = async (fileObj: UploadFile) => {
       uploadFiles.value[idx].status = 'success'
       uploadFiles.value[idx].progress = 100
       uploadFiles.value[idx].uploadId = result.uploadId
+      uploadFiles.value[idx].assessmentId = result.assessmentId
     }
 
   } catch (error: any) {
@@ -858,15 +972,24 @@ const uploadFileChunksHandler = async (fileObj: UploadFile) => {
       uploadFiles.value[idx].status = 'error'
       uploadFiles.value[idx].error = error.message || '上传失败'
     }
+    try {
+      const latest = await getAssessmentByProjectId(currentProject.value.id, true)
+      if (latest.data) uploadAssessmentId.value = latest.data.id
+    } catch { /* The failure notification and result page can recover once the network returns. */ }
   }
 }
 
 // 重试上传
-const retryUploadFile = (fileObj: UploadFile) => {
-  fileObj.status = 'waiting'
-  fileObj.progress = 0
-  fileObj.error = null
-  uploadFileChunksHandler(fileObj)
+const retryUploadFile = async (_fileObj: UploadFile) => {
+  if (hasUploadingFiles.value) return
+  for (const file of uploadFiles.value) {
+    file.status = 'waiting'; file.progress = 0; file.error = null
+    file.uploadId = null; file.assessmentId = null
+  }
+  for (const file of uploadFiles.value) {
+    await uploadFileChunksHandler(file)
+    if (file.status === 'error') break
+  }
 }
 
 // 确认所有上传
@@ -885,6 +1008,10 @@ const confirmAllUploads = async () => {
     ElMessage.warning('没有已完成分片上传的文件')
     return
   }
+  if (!uploadAssessmentId.value || uploadFiles.value.some(f => f.status !== 'success') || successFiles.some(f => f.assessmentId !== uploadAssessmentId.value)) {
+    ElMessage.warning('请重新上传本批全部文件后再确认，避免遗漏失败或旧批次的文件')
+    return
+  }
 
   isConfirming.value = true
   uploadStats.total = successFiles.length
@@ -892,7 +1019,8 @@ const confirmAllUploads = async () => {
   uploadStats.failed = uploadFiles.value.filter(f => f.status === 'error').length
 
   try {
-    await confirmFileUpload(currentProject.value.id)
+    const confirmation = await confirmFileUpload(currentProject.value.id, uploadAssessmentId.value)
+    isAssessing.value = true
     uploadStats.completed = successFiles.length
 
     // 更新项目状态
@@ -909,7 +1037,7 @@ const confirmAllUploads = async () => {
     router.push({
       path: '/assessment-result',
       query: {
-        waiting: 'true',
+        assessmentId: String(confirmation.data.assessmentId),
         projectId: currentProject.value.id.toString()
       }
     })
@@ -929,9 +1057,9 @@ const cancelUpload = async (fileId: number) => {
     file.progress = 0
     file.error = '上传已取消'
 
-    if (file.uploadId) {
+    if (file.uploadId && file.assessmentId) {
       try {
-        await deleteUploadFile(currentProject.value.id, file.uploadId)
+        await deleteUploadFile(currentProject.value.id, file.uploadId, file.assessmentId)
       } catch (error) {
         console.warn('删除临时文件失败:', error)
       }
@@ -940,17 +1068,22 @@ const cancelUpload = async (fileId: number) => {
 }
 
 // 移除文件
-const removeFile = (fileId: number) => {
+const removeFile = async (fileId: number) => {
   const index = uploadFiles.value.findIndex(f => f.id === fileId)
   if (index > -1) {
+    const file = uploadFiles.value[index]
+    if (file.uploadId && file.assessmentId && currentProject.value) {
+      try { await deleteUploadFile(currentProject.value.id, file.uploadId, file.assessmentId) }
+      catch (error) { console.warn('删除上传文件失败:', error) }
+    }
     uploadFiles.value.splice(index, 1)
   }
 }
 
 // 清空所有文件
-const clearAllFiles = () => {
+const clearAllFiles = async () => {
   if (!hasUploadingFiles.value && !isConfirming.value) {
-    uploadFiles.value = []
+    for (const file of [...uploadFiles.value]) await removeFile(file.id)
     uploadStats.total = 0
     uploadStats.completed = 0
     uploadStats.failed = 0

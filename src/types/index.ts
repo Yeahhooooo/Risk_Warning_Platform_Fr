@@ -65,6 +65,8 @@ export interface EnterpriseCreateRequest {
   businessStatus?: string
 }
 
+export type EnterpriseUpdateRequest = Partial<EnterpriseCreateRequest>
+
 export interface EnterpriseUserResponse {
   role: string
   user: {
@@ -85,6 +87,7 @@ export interface AddMemberRequest {
 // 项目相关类型
 export interface Project {
   id: number
+  type?: string | null
   enterpriseId: number
   name: string
   status: string
@@ -101,6 +104,7 @@ export interface Project {
 
 export interface ProjectCreateRequest {
   enterpriseId: number
+  type?: string
   name: string
   description?: string
   startDate?: string
@@ -109,6 +113,8 @@ export interface ProjectCreateRequest {
   region?: string
   orientedUser?: string
 }
+
+export type ProjectUpdateRequest = Partial<Omit<ProjectCreateRequest, 'enterpriseId'>>
 
 export interface ProjectMemberResponse {
   role: string
@@ -132,6 +138,11 @@ export interface Assessment {
   details: string | null
   recommendations: string | null
   status: string
+  failureCode: string | null
+  failureReason: string | null
+  failureStage: string | null
+  failedAt: string | null
+  uploadTaskId: string | null
   createdAt: string
 }
 

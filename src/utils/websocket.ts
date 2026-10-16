@@ -2,8 +2,9 @@
  * WebSocket 连接管理工具
  * 用于与后端建立实时通信连接
  */
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 import router from '@/router'
+import type { AssessmentStatusResponse } from '@/types/report'
 
 // WebSocket 消息类型定义
 export interface WebSocketMessage {
@@ -19,8 +20,8 @@ export interface NotificationMessage {
   content: string
   projectId?: number
   assessmentId?: number
-  timestamp?: number
-  extraData?: Record<string, any>
+  timestamp?: string | number
+  extraData?: string | Partial<AssessmentStatusResponse>
 }
 
 // 绑定响应消息类型
@@ -175,8 +176,18 @@ class WebSocketService {
       // 心跳响应，不做特殊处理
       console.log('Heartbeat pong received')
     } else if (type === 'notification') {
+      const notification = message as NotificationMessage
+      if (typeof notification.extraData === 'string') {
+        try {
+          const parsed: unknown = JSON.parse(notification.extraData)
+          notification.extraData = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            ? parsed as Partial<AssessmentStatusResponse> : undefined
+        } catch {
+          notification.extraData = undefined
+        }
+      }
       // 处理通知消息
-      this.handleNotification(message as NotificationMessage)
+      this.handleNotification(notification)
     }
 
     // 调用注册的消息处理器
@@ -200,13 +211,14 @@ class WebSocketService {
 
     // 检查当前是否在评估结果页面等待中
     const currentRoute = router.currentRoute.value
-    const isOnWaitingPage = currentRoute.path === '/assessment-result' && currentRoute.query.waiting === 'true'
+    // The result page filters by assessment/project ID and handles its own state changes.
+    if (currentRoute.path === '/assessment-result') return
 
     // 根据通知类型处理跳转
     if (notificationType === 'ASSESSMENT_COMPLETED' || notificationType === 'ASSESSMENT_COMPLETE' || notificationType === 'PROCESSING_COMPLETE') {
       // 评估完成
       // 如果用户已经在评估结果页面等待，不需要自动跳转（由页面自己处理）
-      if (assessmentId && !isOnWaitingPage) {
+      if (assessmentId) {
         ElMessage.success('评估已完成，正在跳转到结果页面...')
         setTimeout(() => {
           router.push({
@@ -215,6 +227,15 @@ class WebSocketService {
           })
         }, 1500)
       }
+    } else if (notificationType === 'ASSESSMENT_FAILED') {
+      ElNotification({
+        title: '评估失败', type: 'error',
+        message: notification.content || '评估失败，点击查看失败原因',
+        duration: 8000,
+        onClick: () => {
+          if (assessmentId) router.push({ path: '/assessment-result', query: { assessmentId: String(assessmentId) } })
+        }
+      })
     } else if (notificationType === 'PROCESSING_STARTED') {
       ElMessage.info('评估已开始，正在处理中...')
     }

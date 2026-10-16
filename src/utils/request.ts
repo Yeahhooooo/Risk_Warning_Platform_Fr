@@ -3,6 +3,13 @@ import type { Result } from '@/types'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /** Polling errors are displayed persistently by the page instead of repeated toasts. */
+    silent?: boolean
+  }
+}
+
 // 创建axios实例
 const request = axios.create({
   baseURL: '/api',
@@ -34,8 +41,8 @@ request.interceptors.response.use(
     if (code === 200) {
       return response.data as unknown as AxiosResponse
     } else {
-      ElMessage.error(message || '请求失败')
-      return Promise.reject(new Error(message || '请求失败'))
+      if (!response.config.silent) ElMessage.error(message || '请求失败')
+      return Promise.reject(Object.assign(new Error(message || '请求失败'), { code, data: response.data.data }))
     }
   },
   (error) => {
@@ -47,10 +54,10 @@ request.interceptors.response.use(
         router.push('/login')
         ElMessage.error('登录已过期，请重新登录')
       } else {
-        ElMessage.error(data?.message || '请求失败')
+        if (!error.config?.silent) ElMessage.error(data?.message || '请求失败')
       }
     } else {
-      ElMessage.error('网络错误，请检查网络连接')
+      if (!error.config?.silent) ElMessage.error('网络错误，请检查网络连接')
     }
     return Promise.reject(error)
   }

@@ -3,7 +3,8 @@ import type { Result } from '@/types'
 import type {
   IndicatorDistributionVO,
   RiskVO,
-  AssessmentDetailVO
+  AssessmentDetailVO,
+  AssessmentStatusResponse
 } from '@/types/report'
 
 /**
@@ -38,7 +39,11 @@ export function getRiskList(
  * 获取评估总览报告
  * @param assessmentId 评估ID
  */
-export function getAssessmentGeneral(assessmentId: number): Promise<Result<AssessmentDetailVO>> {
-  return request.get(`/report/report/report/general/${assessmentId}`)
+export function getAssessmentGeneral(assessmentId: number, silent = false): Promise<Result<AssessmentDetailVO>> {
+  return request.get(`/report/report/report/general/${assessmentId}`, { silent })
+}
+
+export function getAssessmentStatus(assessmentId: number, silent = false): Promise<Result<AssessmentStatusResponse>> {
+  return request.get(`/assessment/${assessmentId}/status`, { silent })
 }
 

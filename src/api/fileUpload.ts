@@ -17,6 +17,7 @@ const DEFAULT_CONFIG = {
 // 初始化上传响应
 export interface FileUploadInitResponse {
   uploadId: string
+  assessmentId: number
 }
 
 // 初始化上传请求参数
@@ -38,6 +39,7 @@ export interface UploadProgressInfo {
 
 // 上传结果
 export interface UploadResult {
+  assessmentId: number
   success: boolean
   message: string | null
   uploadId: string
@@ -113,6 +115,8 @@ const retryAsync = async <T>(
       return await fn()
     } catch (error: any) {
       lastError = error
+      // A persisted business failure ends this batch; only transport failures are retryable.
+      if (typeof error?.code === 'number' && error.code >= 400) throw error
 
       if (i < maxRetries) {
         console.warn(`操作失败，${retryDelay}ms后进行第${i + 1}次重试:`, error.message)
@@ -237,14 +241,16 @@ export const initFileUpload = (data: FileUploadInitRequest): Promise<Result<File
  */
 export const uploadFileChunk = async (params: {
   projectId: number
+  assessmentId: number
   uploadId: string
   chunkIndex: number
   chunkData: Blob
 }): Promise<Result<string>> => {
-  const { projectId, uploadId, chunkIndex, chunkData } = params
+  const { projectId, assessmentId, uploadId, chunkIndex, chunkData } = params
 
   const formData = new FormData()
   formData.append('projectId', projectId.toString())
+  formData.append('assessmentId', assessmentId.toString())
   formData.append('uploadId', uploadId)
   formData.append('chunkIndex', chunkIndex.toString())
   formData.append('chunkData', chunkData, `chunk_${chunkIndex}`)
@@ -260,18 +266,18 @@ export const uploadFileChunk = async (params: {
 /**
  * 确认文件上传完成
  */
-export const confirmFileUpload = (projectId: number): Promise<Result<string>> => {
+export const confirmFileUpload = (projectId: number, assessmentId: number): Promise<Result<{ assessmentId: number }>> => {
   return request.post('org/file/confirmUpload', null, {
-    params: { projectId }
+    params: { projectId, assessmentId }
   })
 }
 
 /**
  * 删除上传的文件
  */
-export const deleteUploadFile = (projectId: number, uploadId: string): Promise<Result<string>> => {
+export const deleteUploadFile = (projectId: number, uploadId: string, assessmentId: number): Promise<Result<string>> => {
   return request.post('org/file/deleteFile', null, {
-    params: { projectId, uploadId }
+    params: { projectId, uploadId, assessmentId }
   })
 }
 
@@ -287,6 +293,7 @@ export const uploadFileWithChunks = async (params: {
   onHashProgress?: (progress: number) => void
   onChunkSuccess?: (chunkIndex: number, uploaded: number, total: number) => void
   onChunkError?: (chunkIndex: number, error: Error) => void
+  onInitialized?: (upload: FileUploadInitResponse) => void
   autoConfirm?: boolean
 }): Promise<UploadResult> => {
   const {
@@ -298,6 +305,7 @@ export const uploadFileWithChunks = async (params: {
     onHashProgress,
     onChunkSuccess,
     onChunkError,
+    onInitialized,
     autoConfirm = false
   } = params
 
@@ -324,6 +332,8 @@ export const uploadFileWithChunks = async (params: {
       fileType
     })
     const uploadId = initResult.data.uploadId
+    const assessmentId = initResult.data.assessmentId
+    onInitialized?.(initResult.data)
     console.log('初始化上传成功，uploadId:', uploadId)
 
     let uploadedChunks = 0
@@ -336,6 +346,7 @@ export const uploadFileWithChunks = async (params: {
         try {
           await retryAsync(() => uploadFileChunk({
             projectId,
+            assessmentId,
             uploadId,
             chunkIndex: index,
             chunkData: chunk
@@ -383,14 +394,15 @@ export const uploadFileWithChunks = async (params: {
     // 7. 只在autoConfirm为true时才确认上传
     let confirmMessage: string | null = null
     if (autoConfirm) {
-      const result = await confirmFileUpload(projectId)
-      confirmMessage = result.data
+      const result = await confirmFileUpload(projectId, assessmentId)
+      confirmMessage = `评估 ${result.data.assessmentId} 已提交`
       console.log('文件上传完成:', confirmMessage)
     } else {
       console.log('所有分片上传完成，等待确认上传')
     }
 
     return {
+      assessmentId,
       success: true,
       message: confirmMessage,
       uploadId,

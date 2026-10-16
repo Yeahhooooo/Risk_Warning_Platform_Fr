@@ -8,10 +8,10 @@
  */
 export enum RiskDimensionEnum {
   ENTERPRISE_RELATED_RISK = '企业关联方风险',
-  PRODUCT_LEGITIMACY_RISK = '产品合规风险',
-  LABOR_LEGITIMACY_RISK = '劳务合规风险',
+  PRODUCT_LEGITIMACY_RISK = '产品法律风险',
+  LABOR_LEGITIMACY_RISK = '劳动法律风险',
   ENTERPRISE_CREDIT_RISK = '企业信用风险',
-  ENTERPRISE_INTERNATIONAL_COOPERATION_RISK = '企业国际合作风险',
+  ENTERPRISE_INTERNATIONAL_COOPERATION_RISK = '国际化经营风险',
   SUPPLY_CHAIN_RISK = '供应链风险'
 }
 
@@ -28,9 +28,10 @@ export enum RiskLevelEnum {
  * 评估状态枚举
  */
 export enum AssessmentStatusEnum {
-  PENDING = 'PENDING',
-  IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED',
+  UPLOADING = 'UPLOADING',
+  TO_BE_ASSESSED = 'TO_BE_ASSESSED',
+  ASSESSING = 'ASSESSING',
+  ASSESSED = 'ASSESSED',
   FAILED = 'FAILED'
 }
 
@@ -128,9 +129,31 @@ export interface RiskVO {
  * 对应后端 OverallResult
  */
 export interface OverallResult {
-  overallScore: number
-  overallRiskLevel: RiskLevelEnum
+  overallScore: number | null
+  overallRiskLevel: RiskLevelEnum | null
   status: AssessmentStatusEnum
+  failureCode: string | null
+  failureReason: string | null
+  failureStage: string | null
+  failedAt: string | null
+}
+
+/** Database-only status endpoint and parsed notification extraData. */
+export interface AssessmentStatusResponse extends Pick<OverallResult, 'status' | 'failureCode' | 'failureReason' | 'failureStage' | 'failedAt'> {
+  assessmentId: number
+  projectId: number
+}
+
+export const assessmentFailureStageLabels: Record<string, string> = {
+  UPLOAD_INIT: '上传初始化',
+  UPLOAD_CHUNK: '分片上传',
+  UPLOAD_CONFIRM: '确认上传',
+  UPLOAD_CANCELLED: '取消上传',
+  ASSESSMENT_TIMEOUT: '上传或评估超时',
+  FILE_MERGE: '上传文件合并',
+  BEHAVIOR_PROCESSING: '材料解析与行为分析',
+  INDICATOR_CALCULATION: '指标计算',
+  REPORT_AGGREGATION: '报告汇总'
 }
 
 /**
@@ -138,10 +161,10 @@ export interface OverallResult {
  * 对应后端 RiskSummary
  */
 export interface RiskSummary {
-  totalRisks: number
-  highRiskCount: number
-  mediumRiskCount: number
-  lowRiskCount: number
+  totalRisks: number | null
+  highRiskCount: number | null
+  mediumRiskCount: number | null
+  lowRiskCount: number | null
 }
 
 /**
@@ -149,10 +172,10 @@ export interface RiskSummary {
  * 对应后端 IndicatorOverview
  */
 export interface IndicatorOverview {
-  behaviorIndicators: number
-  questionnaireIndicators: number
-  riskTriggeredIndicators: number
-  safeIndicators: number
+  behaviorIndicators: number | null
+  questionnaireIndicators: number | null
+  riskTriggeredIndicators: number | null
+  safeIndicators: number | null
 }
 
 /**
@@ -160,11 +183,11 @@ export interface IndicatorOverview {
  * 对应后端 DimensionRiskDistribution
  */
 export interface DimensionRiskDistribution {
-  dimension: string
-  riskCount: number
-  lowRiskCount: number
-  mediumRiskCount: number
-  highRiskCount: number
+  dimension: string | null
+  riskCount: number | null
+  lowRiskCount: number | null
+  mediumRiskCount: number | null
+  highRiskCount: number | null
 }
 
 /**
@@ -174,10 +197,10 @@ export interface DimensionRiskDistribution {
 export interface AssessmentDetailVO {
   projectId: number
   assessmentId: number
-  assessmentDate: string
+  assessmentDate: string | null
   overallResult: OverallResult
-  riskSummary: RiskSummary
-  indicatorOverview: IndicatorOverview
-  dimensionRiskDistribution: Record<string, DimensionRiskDistribution>
+  riskSummary: RiskSummary | null
+  indicatorOverview: IndicatorOverview | null
+  dimensionRiskDistribution: Record<string, DimensionRiskDistribution> | null
 }
 

@@ -6,6 +6,7 @@
         <el-card class="result-card" shadow="hover">
           <template #header>
             <h3>总体评估结果</h3>
+            <el-tag :type="getStatusType(data?.overallResult?.status)">{{ getStatusLabel(data?.overallResult?.status) }}</el-tag>
           </template>
           <div class="overall-result">
             <div class="risk-level-section">
@@ -116,9 +117,10 @@ const dimensionTableData = computed(() => {
 // 状态标签类型
 const getStatusType = (status?: string) => {
   const statusMap: Record<string, any> = {
-    'COMPLETED': 'success',
-    'IN_PROGRESS': 'warning',
-    'PENDING': 'info',
+    'UPLOADING': 'info',
+    'ASSESSED': 'success',
+    'ASSESSING': 'warning',
+    'TO_BE_ASSESSED': 'info',
     'FAILED': 'danger'
   }
   return statusMap[status || ''] || 'info'
@@ -127,16 +129,17 @@ const getStatusType = (status?: string) => {
 // 状态标签文本
 const getStatusLabel = (status?: string) => {
   const labelMap: Record<string, string> = {
-    'COMPLETED': '已完成',
-    'IN_PROGRESS': '进行中',
-    'PENDING': '待处理',
+    'UPLOADING': '上传中',
+    'ASSESSED': '已完成',
+    'ASSESSING': '评估中',
+    'TO_BE_ASSESSED': '待评估',
     'FAILED': '失败'
   }
   return labelMap[status || ''] || '未知'
 }
 
 // 风险等级标签类型
-const getRiskLevelTagType = (level?: string) => {
+const getRiskLevelTagType = (level?: string | null) => {
   const typeMap: Record<string, any> = {
     'HIGH_RISK': 'danger',
     'MEDIUM_RISK': 'warning',
@@ -146,7 +149,7 @@ const getRiskLevelTagType = (level?: string) => {
 }
 
 // 风险等级标签文本
-const getRiskLevelLabel = (level?: string) => {
+const getRiskLevelLabel = (level?: string | null) => {
   const labelMap: Record<string, string> = {
     'HIGH_RISK': '高风险',
     'MEDIUM_RISK': '中风险',
@@ -183,6 +186,8 @@ const getRiskLevelLabel = (level?: string) => {
 
 .overall-result {
   display: flex;
+  gap: 48px;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
   padding: 20px 0;

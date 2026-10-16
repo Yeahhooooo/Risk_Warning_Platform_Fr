@@ -12,6 +12,15 @@
           </el-button>
         </div>
 
+        <el-form inline @submit.prevent="viewLatestReport(enterpriseName)">
+          <el-form-item label="按企业名称查询评估">
+            <el-input v-model="enterpriseName" placeholder="请输入完整企业名称" clearable />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" native-type="submit">查询最新评估</el-button>
+          </el-form-item>
+        </el-form>
+
         <!-- 企业列表 -->
         <el-table :data="enterprises" v-loading="loading" stripe style="width: 100%">
           <el-table-column prop="name" label="企业名称" min-width="200" />
@@ -25,9 +34,12 @@
               {{ formatDate(row.createdAt) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column label="操作" width="310" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link @click="viewMembers(row)">查看成员</el-button>
+              <el-button type="primary" link @click="viewLatestReport(row.name)">最新评估</el-button>
+              <el-button v-if="manageableEnterpriseIds.has(row.id)" type="primary" link :disabled="submitting || deletingId !== null" @click="showEditDialog(row)">编辑</el-button>
+              <el-button v-if="manageableEnterpriseIds.has(row.id)" type="danger" link :loading="deletingId === row.id" :disabled="submitting || deletingId !== null" @click="handleDelete(row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -35,9 +47,11 @@
         <!-- 创建企业对话框 -->
         <el-dialog
           v-model="createDialogVisible"
-          title="创建企业"
+          :title="editingEnterprise ? '编辑企业' : '创建企业'"
           width="600px"
           :close-on-click-modal="false"
+          :show-close="!submitting"
+          :close-on-press-escape="!submitting"
         >
           <el-form
             ref="formRef"
@@ -48,7 +62,7 @@
             <el-form-item label="企业名称" prop="name">
               <el-input v-model="enterpriseForm.name" placeholder="请输入企业名称" />
             </el-form-item>
-            <el-form-item label="统一社会信用代码">
+            <el-form-item label="统一社会信用代码" prop="creditCode">
               <el-input v-model="enterpriseForm.creditCode" placeholder="请输入统一社会信用代码" />
             </el-form-item>
             <el-form-item label="企业类型">
@@ -65,7 +79,7 @@
                 placeholder="请输入经营范围"
               />
             </el-form-item>
-            <el-form-item label="注册资本(万元)">
+            <el-form-item label="注册资本(万元)" prop="registeredCapital" :rules="editingEnterprise && formSnapshot?.registeredCapital != null ? [{ required: true, message: '注册资本不能清空，可填写 0', trigger: 'blur' }] : []">
               <el-input-number
                 v-model="enterpriseForm.registeredCapital"
                 :min="0"
@@ -80,6 +94,7 @@
                 placeholder="选择成立日期"
                 style="width: 100%"
                 value-format="YYYY-MM-DD"
+                :clearable="!editingEnterprise"
               />
             </el-form-item>
             <el-form-item label="法定代表人">
@@ -93,8 +108,8 @@
             </el-form-item>
           </el-form>
           <template #footer>
-            <el-button @click="createDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="handleCreate" :loading="submitting">创建</el-button>
+            <el-button @click="createDialogVisible = false" :disabled="submitting">取消</el-button>
+            <el-button type="primary" @click="handleCreate" :loading="submitting">{{ editingEnterprise ? '保存修改' : '创建' }}</el-button>
           </template>
         </el-dialog>
 
@@ -184,13 +199,30 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { Plus } from '@element-plus/icons-vue'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { createEnterprise, getAllEnterprises, getEnterpriseMembers, addEnterpriseMember } from '@/api/enterprise'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { createEnterprise, getAllEnterprises, getEnterpriseMembers, addEnterpriseMember, getEnterprise, updateEnterprise, deleteEnterprise } from '@/api/enterprise'
+import { useUserStore } from '@/stores/user'
 import { getUserByEmail } from '@/api/user'
 import type { Enterprise, EnterpriseCreateRequest, EnterpriseUserResponse, AddMemberRequest, UserResponse } from '@/types'
 import { enterpriseRoleOptions } from '@/types'
 import AppHeader from '@/components/AppHeader.vue'
+
+const router = useRouter()
+const userStore = useUserStore()
+const manageableEnterpriseIds = ref(new Set<number>())
+const editingEnterprise = ref<Enterprise | null>(null)
+const formSnapshot = ref<EnterpriseCreateRequest | null>(null)
+const deletingId = ref<number | null>(null)
+const enterpriseName = ref('')
+const viewLatestReport = (name: string) => {
+  if (!name.trim()) {
+    ElMessage.warning('请输入完整企业名称')
+    return
+  }
+  router.push({ path: '/assessment-result', query: { enterpriseName: name.trim() } })
+}
 
 // 状态
 const loading = ref(false)
@@ -225,8 +257,12 @@ const enterpriseForm = reactive<EnterpriseCreateRequest>({
 // 表单验证规则
 const formRules: FormRules = {
   name: [
-    { required: true, message: '请输入企业名称', trigger: 'blur' }
-  ]
+    { required: true, whitespace: true, message: '请输入企业名称', trigger: 'blur' }
+  ],
+  creditCode: [{ validator: (_rule, value, callback) => {
+    if (editingEnterprise.value && value !== formSnapshot.value?.creditCode && !value?.trim()) callback(new Error('统一社会信用代码不能清空'))
+    else callback()
+  }, trigger: 'blur' }]
 }
 
 // 添加成员表单（email用于搜索，searchedUserId用于提交）
@@ -252,6 +288,14 @@ const fetchEnterprises = async () => {
   try {
     const res = await getAllEnterprises()
     enterprises.value = res.data || []
+    manageableEnterpriseIds.value = new Set()
+    if (userStore.user) {
+      const permissions = await Promise.allSettled(enterprises.value.map(async enterprise => {
+        const response = await getEnterpriseMembers(enterprise.id, true)
+        return response.data.some(member => member.user?.id === userStore.user?.id && member.role.toLowerCase() === 'admin') ? enterprise.id : null
+      }))
+      manageableEnterpriseIds.value = new Set(permissions.flatMap(result => result.status === 'fulfilled' && result.value !== null ? [result.value] : []))
+    }
   } catch (error) {
     console.error('获取企业列表失败', error)
   } finally {
@@ -261,8 +305,49 @@ const fetchEnterprises = async () => {
 
 // 显示创建对话框
 const showCreateDialog = () => {
+  if (submitting.value) return
+  editingEnterprise.value = null
+  formSnapshot.value = null
   resetForm()
   createDialogVisible.value = true
+}
+
+const showEditDialog = async (enterprise: Enterprise) => {
+  if (submitting.value) return
+  submitting.value = true
+  try {
+    const response = await getEnterprise(enterprise.id)
+    resetForm()
+    const data = response.data
+    for (const key of Object.keys(enterpriseForm) as (keyof EnterpriseCreateRequest)[]) {
+      if (key !== 'registeredCapital') Object.assign(enterpriseForm, { [key]: data[key] ?? '' })
+    }
+    enterpriseForm.registeredCapital = data.registeredCapital ?? undefined
+    editingEnterprise.value = data
+    formSnapshot.value = { ...enterpriseForm }
+    createDialogVisible.value = true
+  } catch (error) { console.error('读取企业详情失败', error) }
+  finally { submitting.value = false }
+}
+
+const handleDelete = async (enterprise: Enterprise) => {
+  if (deletingId.value !== null) return
+  deletingId.value = enterprise.id
+  try {
+    await ElMessageBox.confirm(`确定删除企业“${enterprise.name}”吗？该企业的所有项目、成员关系及关联评估数据也会删除，关联文件将在后台清理。此操作无法撤销。`, '删除企业', {
+      type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消', confirmButtonClass: 'el-button--danger'
+    })
+  } catch { deletingId.value = null; return }
+  try {
+    await deleteEnterprise(enterprise.id)
+    enterprises.value = enterprises.value.filter(item => item.id !== enterprise.id)
+    if (currentEnterprise.value?.id === enterprise.id) {
+      currentEnterprise.value = null; members.value = []; membersDialogVisible.value = false; addMemberDialogVisible.value = false
+    }
+    ElMessage.success('企业已删除，关联文件将在后台清理')
+    await fetchEnterprises()
+  } catch (error) { console.error('删除企业失败', error) }
+  finally { deletingId.value = null }
 }
 
 // 重置表单
@@ -284,15 +369,26 @@ const resetForm = () => {
 
 // 创建企业
 const handleCreate = async () => {
-  const valid = await formRef.value?.validate()
+  if (submitting.value) return
+  const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
   submitting.value = true
   try {
-    await createEnterprise(enterpriseForm)
-    ElMessage.success('企业创建成功')
+    if (editingEnterprise.value) {
+      const changes = Object.fromEntries(Object.entries(enterpriseForm).filter(([key, value]) =>
+        value != null && value !== formSnapshot.value?.[key as keyof EnterpriseCreateRequest]))
+      if (Object.keys(changes).length === 0) { ElMessage.info('没有需要保存的修改'); return }
+      const response = await updateEnterprise(editingEnterprise.value.id, changes)
+      enterprises.value = enterprises.value.map(item => item.id === response.data.id ? response.data : item)
+      if (currentEnterprise.value?.id === response.data.id) currentEnterprise.value = response.data
+      ElMessage.success('企业修改成功')
+    } else {
+      await createEnterprise(enterpriseForm)
+      ElMessage.success('企业创建成功')
+    }
     createDialogVisible.value = false
-    fetchEnterprises()
+    await fetchEnterprises()
   } catch (error) {
     console.error('创建企业失败', error)
   } finally {
